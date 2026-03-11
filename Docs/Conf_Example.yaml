@@ -1,0 +1,50 @@
+tables:
+  customers:
+    file_name: customers.json
+    target_table: dim_customer
+    table_type: dimension
+
+    dimension:
+      mode: scd
+      scd_type: 2
+
+    primary_key: customer_id
+    surrogate_key: customer_sk
+    tracked_columns:
+      - full_name
+      - email
+      - phone
+      - region_id
+
+    required_fields:
+      - customer_id
+      - full_name
+      - email
+      - phone
+      - region_id
+
+    foreign_keys:
+      region_id: dim_region.region_id
+
+  tickets:
+    file_name: tickets.csv
+    target_table: fact_ticket
+    table_type: fact
+
+    primary_key: ticket_id
+
+    required_fields:
+      - ticket_id
+      - customer_id
+      - priority_id
+      - created_at
+      - status
+
+    foreign_keys:
+      customer_id: dim_customer.customer_id
+      priority_id: dim_priority.priority_id
+
+    joins:
+      - table: dim_priority
+        left_on: priority_id
+        right_on: priority_id
