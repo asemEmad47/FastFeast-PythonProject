@@ -285,244 +285,134 @@ WorkFlow
 
 ---
 
-## 🔁 Pipeline Flow
 
-### Startup Sequence
+## 🔁 Pipeline Flow (Updated)
 
-```
-STARTUP
-  main() → AppManager()
-  AppManager.initialize_variables()
-    → creates: DataRegistry, Audit, ConfFileParser, FileTracker, DatabaseManager
-  AppManager starts Thread 1 (Batch) and Thread 2 (MicroBatch)
+The pipeline execution is organized into **four deterministic phases** orchestrated by the `WorkFlow` facade.
+Both **Batch** and **MicroBatch** threads send files to the same workflow engine.
 
-BATCH THREAD — runs once per day
-  Batch.run()
-  → Batch.read_batch()
-  → Batch.remove_processed_files() (Idempotency check)
-  → WorkFlow.orchestrate(files)
+### Workflow Orchestration
 
-PER-FILE LOOP inside WorkFlow.orchestrate()
+WORKFLOW.orchestrate()
 
-  Step 1 — Read
-    ReadFromSourceFactory.create_source(file, registry, parser)
-    → returns ReadFromCSV or ReadFromJSON
-    → ReadFromSource.do_task() → raw DataFrame
-    ON FAIL: Audit.LogFailure() + WorkFlow.trigger_alert() async + SKIP file
+  audit.file_start_time = now()
+  result_dfs = do_before_join_action()
+  joined_dfs = do_join_action()
+  final_dfs  = do_after_action()
 
-  Step 2a — Schema Validation
-    ValidatorContext.set_validator(SchemaValidator)
-    ValidatorContext.validate(df, model)
-    → checks: required columns exist, types match, no null on mandatory fields
-    ON FAIL: entire file → QuarantineWriter + Audit.LogFailure() + trigger_alert() + SKIP
+  ok = load_to_fact.do_task(final_dfs)
 
-  Step 2b — Row Validation
-    ValidatorContext.set_validator(RowsValidator)
-    RowsValidator.validate_dataType() + validate_nullability() + validate_value()
-    → bad rows separated → QuarantineWriter.write_rejected_rows(bad_df, reason)
-    → clean DataFrame continues
-    Audit.track_metrics("row_validation", {null_count, rejected_count})
+  IF NOT ok
+      trigger_alert("Load phase failed")
+      RETURN
 
-  Step 3 — PII Masking
-    PIIMask.do_task(df)
-    → hashes email, full_name, phone, national_id, driver_name, driver_phone
-    → returns masked DataFrame (no raw PII ever reaches storage)
+  FOR file IN files
+      file_tracker.mark_processed(file)
 
-  Step 4 — Duplicate LookUp
-    LookUp.do_task(df) — source = target table, lookup_fields = [PK]
-    → filters rows already in DWH
-    Audit.track_metrics("dedup", {duplicate_count})
+  file_tracker.move_files_to_archive(files)
 
-  Step 5 — Orphan LookUp (FK check, config-driven)
-    ConfFileParser.get_target_foreign_keys() → FK list
-    For each FK: LookUp against the referenced dim table
-    → orphan rows → QuarantineWriter.write_rejected_rows(orphan_df, "orphan")
-    → valid rows continue
-    Audit.track_metrics("orphan_check", {orphan_count})
-    IF orphan_rate > threshold → WorkFlow.trigger_alert() async
-
-  Step 6 — Join (if config says so)
-    ConfFileParser.get_join_config() → join spec
-    Join.do_task(df) → enriched DataFrame
-
-  Step 7a — Dimension Handling (SCDComponent)
-    If target table is a dimension:
-      SCDComponent.do_task(df)
-      → detect dimension mode from config
-      → if static dimension: insert only new rows
-      → if SCD Type 1: update changed rows, insert new rows
-      → if SCD Type 2:
-           generate surrogate key if needed
-           expire old current row
-           prepare new current row
-           insert new version
-    ON FAIL: Audit.LogFailure() + trigger_alert()
-
-  Step 7b — Fact Load (LoadToTarget — MicroBatch only)
-    Only after all required dims are confirmed loaded:
-    LoadToTarget.do_task(fact_df) → writes to fact table in DWH
-    ON FAIL: Audit.LogFailure() + trigger_alert()
-
-  Step 8 — Audit & Persist
-    Audit.track_metrics("load", {latency})
-    Audit.track_metrics("scd", {
-      scd_inserted_count,
-      scd_updated_count,
-      scd_expired_count,
-      scd_skipped_count
-    })
-    Audit.persist_to_dwh(pipeline_run_log_repo)
-    → writes one row to pipeline_run_log table
-
-  Step 9 — Mark Complete
-    FileTracker.move_files_to_archive(file)
-    Audit.LogSuccess(file)
-```
-
-### Per-File Execution (inside `WorkFlow.orchestrate()`)
-
-```
-───────────────────────────────────────────────────────────────────────
- STEP 1   IDEMPOTENCY CHECK
-───────────────────────────────────────────────────────────────────────
-  FileTracker.is_processed(file)
-  → True  ─────────────────────────────────────────────────► SKIP FILE
-  → False → continue
-
-───────────────────────────────────────────────────────────────────────
- STEP 2   READ FROM SOURCE
-───────────────────────────────────────────────────────────────────────
-  ReadFromSourceFactory.create_source(file, registry, parser)
-    → ReadFromCSV  or  ReadFromJSON
-  .do_task() → raw DataFrame
-  ✖ FAIL → Audit.LogFailure + async alert + SKIP FILE
-
-───────────────────────────────────────────────────────────────────────
- STEP 3a  SCHEMA VALIDATION
-───────────────────────────────────────────────────────────────────────
-  ValidatorContext.set_validator(SchemaValidator)
-  .validate(df, model)
-  Checks:
-    • All required columns present
-    • Correct column data types
-    • Mandatory fields not null at column level
-  ✖ FAIL → QuarantineWriter (whole file) + async alert + SKIP FILE
-
-───────────────────────────────────────────────────────────────────────
- STEP 3b  ROW-LEVEL VALIDATION
-───────────────────────────────────────────────────────────────────────
-  ValidatorContext.set_validator(RowsValidator)
-  .validate(df, model)
-  Checks per row:
-    • validate_dataType()    — wrong type per cell
-    • validate_nullability() — null on required field
-    • validate_value()       — invalid email / phone / date / range
-  bad rows  → QuarantineWriter.write_rejected_rows(bad_df, reason)
-  clean rows → continue
-  Audit.track_metrics("row_validation", {null_count, rejected_count})
-
-───────────────────────────────────────────────────────────────────────
- STEP 4   PII MASKING
-───────────────────────────────────────────────────────────────────────
-  PIIMask.do_task(df)
-  SHA-256 hashes:
-    Customer  → full_name, email, phone
-    Driver    → driver_name, driver_phone, national_id
-    Agent     → agent_name, agent_email, agent_phone
-  → masked DataFrame (no raw PII ever reaches DWH)
-
-───────────────────────────────────────────────────────────────────────
- STEP 5   DUPLICATE CHECK  (LookUp)
-───────────────────────────────────────────────────────────────────────
-  Strategy from config: "cache" or "bulk_query"
-  Collect all PKs from df as a set
-  ONE query: SELECT pk FROM target WHERE pk IN (...)
-    or cache hit: DataRegistry.lookup_cached(table, ids)
-  Filter rows already in DWH
-  Audit.track_metrics("dedup", {duplicate_count})
-
-───────────────────────────────────────────────────────────────────────
- STEP 6   ORPHAN / FK CHECK  (LookUp)
-───────────────────────────────────────────────────────────────────────
-  ConfFileParser.get_target_foreign_keys() → FK list from config
-  For each FK column:
-    bulk lookup against referenced dim table
-    orphan rows → QuarantineWriter.write_rejected_rows(orphan_df, "orphan_fk")
-  Audit.track_metrics("orphan", {orphan_count})
-  orphan_rate > threshold → async alert
-
-───────────────────────────────────────────────────────────────────────
- STEP 7   JOIN ENRICHMENT  (optional, config-driven)
-───────────────────────────────────────────────────────────────────────
-  ConfFileParser.get_join_config() → join spec
-  Join.do_task(df) → enriched DataFrame
-  Skipped entirely if no join defined for this table
-
-───────────────────────────────────────────────────────────────────────
- STEP 8a  DIMENSION HANDLING  (SCDComponent)
-───────────────────────────────────────────────────────────────────────
-  Runs only if table_type = dimension
-
-  SCDComponent.do_task(df)
-    → handle_scd()
-
-  If dimension mode = static:
-    • insert only new rows
-    • ignore existing rows
-
-  If dimension mode = scd and scd_type = 1:
-    • split_new_and_existing_rows()
-    • detect_changed_rows()
-    • insert new rows
-    • update changed existing rows
-    • skip unchanged rows
-
-  If dimension mode = scd and scd_type = 2:
-    • split_new_and_existing_rows()
-    • detect_changed_rows()
-    • expire_current_rows()
-    • generate_surrogate_keys()
-    • prepare_type_2_new_rows()
-    • insert new current rows
-
-  Audit.track_metrics("scd", {
-    scd_inserted_count,
-    scd_updated_count,
-    scd_expired_count,
-    scd_skipped_count
-  })
-
-  ✖ FAIL → Audit.LogFailure + async alert
-
-───────────────────────────────────────────────────────────────────────
- STEP 8b  FACT LOAD  (LoadToTarget — MicroBatch only)
-───────────────────────────────────────────────────────────────────────
-  Runs only if table_type = fact
-  Runs only AFTER all required dims confirmed loaded (FK safety)
-
-  orders.json        → fact_order
-  tickets.csv        → fact_ticket
-  ticket_events.json → fact_ticket_event
-
-  LoadToTarget.do_task(df)
-  ✖ FAIL → Audit.LogFailure + async alert
-
-───────────────────────────────────────────────────────────────────────
- STEP 9   AUDIT & PERSIST
-───────────────────────────────────────────────────────────────────────
-  Audit.track_metrics("load", {latency_ms})
-  Audit.get_summary() → QualityReport
-  Audit.persist_to_dwh() → INSERT INTO pipeline_run_log (...)
-  Audit.LogSuccess(file)
-
-───────────────────────────────────────────────────────────────────────
- STEP 10  MARK COMPLETE
-───────────────────────────────────────────────────────────────────────
-  FileTracker.move_files_to_archive(file)
-  → file will be archived
-```
+  audit.persist_to_dwh(run_log_repo)
+  audit.LogSuccess("Pipeline completed successfully")
 
 ---
+
+### Phase 1 — Before Join Tasks
+
+Components executed:
+
+- ReadFromSource
+- ValidatorComponent
+- PIIMask
+- QuarantineWriter
+
+Output DataFrames are cached:
+
+registry.store(table_name, df)
+
+---
+
+### Phase 2 — Join Phase
+
+Fact tables are enriched using dimension tables cached in `DataRegistry`.
+
+FOR each fact table:
+    fact_df = registry.get_df(fact_table)
+
+    FOR each dimension:
+        right_df = registry.get_df(dim_table)
+
+        fact_df = Join.do_task(
+            fact_df,
+            right_df,
+            left_on,
+            right_on,
+            join_type
+        )
+
+registry.store(output_alias, fact_df)
+
+---
+
+### Phase 3 — After Join Tasks
+
+Components executed:
+
+- Transformer
+- OrphansHandler
+- DuplicatesLookUp
+- SCDComponent
+
+FOR task IN after_join_tasks:
+    task.do_task()
+    registry.store(task.source, df)
+
+---
+
+### Phase 4 — Load Phase
+
+Load order:
+
+Dimensions → Facts
+
+FACTLOADTASK.do_task():
+
+FOR dim_component:
+    repo.add_many(df)
+
+FOR fact_component:
+    repo.add_many(df)
+
+---
+
+### Audit
+
+audit.persist_to_dwh(run_log_repo)
+audit.LogSuccess()
+
+Metrics stored:
+
+- total_records
+- duplicate_rate
+- orphan_rate
+- quarantined_count
+- processing_latency
+- file_success
+
+---
+
+### File Completion
+
+file_tracker.mark_processed(file)
+file_tracker.move_files_to_archive(file)
+
+---
+
+### Fault Tolerance
+
+Errors never stop the pipeline.
+
+Error → Audit.LogFailure() → trigger_alert() → continue processing
+
 
 ## 📥 Input Files & Data Model
 

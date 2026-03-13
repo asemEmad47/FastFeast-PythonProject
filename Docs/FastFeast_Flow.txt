@@ -1,0 +1,249 @@
+══════════════════════════════════════════════════════
+FASTFEAST PIPELINE — FIXED PSEUDOCODE
+══════════════════════════════════════════════════════
+
+MAIN
+  initializer = new VariablesInitilzer()
+  initializer.initilize_variables()
+
+  parser   = new ConfFileParser()
+  conf     = parser.parse("conf.yaml")
+  audit    = new Audit()
+  registry = new DataRegistry(conf, parser)
+
+  workflow = new WorkFlow()
+  workflow.registry = registry
+  workflow.parser   = parser
+  workflow.Audit    = audit
+  workflow.alerter  = new EmailTask()
+
+  batch       = new Batch()
+  micro_batch = new MicroBatch()
+
+  batch.workflow       = workflow
+  micro_batch.workflow = workflow
+
+  START Thread 1 -> batch.run()
+  START Thread 2 -> micro_batch.run()
+
+──────────────────────────────────────────────────────
+
+BATCH.run()
+  files = source_folder.list()
+  workflow.files = files.filter( NOT file_tracker.is_processed(file) )
+  workflow.orchestrate()
+
+MICROBATCH.run()
+  files = source_folder.list()
+  workflow.files = files.filter( NOT file_tracker.is_processed(file) )
+  workflow.orchestrate()
+
+──────────────────────────────────────────────────────
+
+WORKFLOW.orchestrate()
+  audit.file_start_time = now()
+
+  result_dfs = do_before_join_action()
+  joined_dfs = do_join_action()
+  final_dfs  = do_after_action()
+
+  ok = load_to_fact.do_task(final_dfs)
+
+  IF NOT ok:
+    trigger_alert("Load phase failed")
+    RETURN
+
+  FOR file IN files:
+    file_tracker.mark_processed(file)
+
+  file_tracker.move_files_to_archive(files)
+
+  run_log_repo = registry.get_repository_for_file("run_log")
+  audit.persist_to_dwh(run_log_repo)
+  audit.LogSuccess("Pipeline completed successfully")
+
+──────────────────────────────────────────────────────
+
+WORKFLOW.do_before_join_action()
+  result_dfs = []
+
+  FOR task IN before_join_tasks:
+
+    table_conf = registry.get_table_conf(task.source)
+
+    ok, errors, df = task.do_task()
+
+    // task runs its component chain:
+    //   ReadFromSource
+    //   ValidatorComponent
+    //   PIIMask
+    //   QuarantineWriter
+
+    audit.track_metrics(
+      task.source,
+      {
+        total_records: len(df),
+        errors: errors
+      }
+    )
+
+    IF NOT ok:
+      trigger_alert("Before-join failed: " + task.source)
+      CONTINUE
+
+    registry.store(task.source, df)
+    result_dfs.append( (task.source, df) )
+
+  RETURN result_dfs
+
+──────────────────────────────────────────────────────
+
+DATAFLOWTASK.do_task()
+  current_df = null
+  all_errors = []
+
+  FOR component IN components:
+    ok, errors, current_df = component.do_task(current_df)
+
+    IF errors is not empty:
+      all_errors.extend(errors)
+
+    IF NOT ok:
+      RETURN false, all_errors, current_df
+
+  RETURN true, all_errors, current_df
+
+──────────────────────────────────────────────────────
+
+WORKFLOW.do_join_action()
+  joined_dfs = []
+
+  FOR each FACT table IN conf["tables"]:
+
+    fact_conf = registry.get_table_conf(fact.file_name)
+    fact_df   = registry.get_df(fact.file_name)
+
+    IF fact_df is null:
+      CONTINUE
+
+    FOR dim_source IN fact_conf["dimension_sources"]:
+
+      dim_conf = registry.get_table_conf(dim_source["dim_key"])
+      right_df = registry.get_df(dim_conf["file_name"])
+
+      IF right_df is null:
+        trigger_alert("Join source missing: " + dim_conf["file_name"])
+        CONTINUE
+
+      right_on = dim_conf["primary_key"]
+      left_on  = dim_source["fact_fk"]
+
+      ok, errors, fact_df = join_task.do_task(
+                              fact_df,
+                              right_df,
+                              left_on,
+                              right_on,
+                              dim_source["join_type"]
+                            )
+
+      IF NOT ok:
+        trigger_alert("Join failed: " + fact.file_name)
+        BREAK
+
+    audit.track_metrics(
+      "join",
+      {
+        output_rows: len(fact_df)
+      }
+    )
+
+    alias = fact_conf["output_alias"]
+    registry.store(alias, fact_df)
+    joined_dfs.append( (alias, fact_df) )
+
+  RETURN joined_dfs
+
+──────────────────────────────────────────────────────
+
+WORKFLOW.do_after_action()
+  final_dfs = []
+
+  FOR task IN after_join_tasks:
+
+    table_conf = registry.get_table_conf(task.source)
+
+    ok, errors, df = task.do_task()
+
+    // task runs its component chain:
+    //   Transformer
+    //   OrphansHandler
+    //   DuplicatesLookUp
+    //   SCDComponent
+
+    audit.track_metrics(
+      task.source,
+      {
+        final_records: len(df),
+        errors: errors
+      }
+    )
+
+    IF NOT ok:
+      trigger_alert("After-join failed: " + task.source)
+      CONTINUE
+
+    registry.store(task.source, df)
+    final_dfs.append( (task.source, df) )
+
+  RETURN final_dfs
+
+──────────────────────────────────────────────────────
+
+FACTLOADTASK.do_task(final_dfs)
+  FOR component IN dim_components:
+    repo = registry.get_repository_for_file(component.source)
+
+    df = pick_df(final_dfs, component.source)
+    IF df is null:
+      CONTINUE
+
+    ok, errors, _ = component.do_task(df)
+
+    audit.track_metrics(
+      component.source,
+      {
+        loaded: ok
+      }
+    )
+
+    IF NOT ok:
+      workflow.trigger_alert("Dim load failed: " + component.source)
+      RETURN false
+
+  FOR component IN fact_components:
+    repo = registry.get_repository_for_file(component.source)
+
+    df = pick_df(final_dfs, component.source)
+    IF df is null:
+      CONTINUE
+
+    ok, errors, _ = component.do_task(df)
+
+    audit.track_metrics(
+      component.source,
+      {
+        loaded: ok
+      }
+    )
+
+    IF NOT ok:
+      workflow.trigger_alert("Fact load failed: " + component.source)
+      RETURN false
+
+  RETURN true
+
+──────────────────────────────────────────────────────
+
+WORKFLOW.trigger_alert(message)
+  Audit.LogFailure(message)
+  alerter.do_task(message)
