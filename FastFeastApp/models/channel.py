@@ -1,9 +1,7 @@
-"""Channel — SQLAlchemy model for dim_channel (SCD Type 1)."""
-from sqlalchemy import Column, Integer, String
+from dataclasses import dataclass
 from models.base import Base
 
-
+@dataclass
 class Channel(Base):
-
-    channel_id   = Column(Integer, primary_key=True)
-    channel_name = Column(String(5), nullable=False)
+    channel_id:   int
+    channel_name: str

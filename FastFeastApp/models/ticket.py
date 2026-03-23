@@ -1,24 +1,23 @@
-"""Ticket — SQLAlchemy model for fact_ticket."""
-import uuid
-from sqlalchemy import Column, Integer, String, Numeric, DateTime
+import datetime
+from decimal import Decimal
+from dataclasses import dataclass
 from models.base import Base
 
-
+@dataclass
 class Ticket(Base):
-
-    ticket_id          = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    order_id           = Column(String(36), nullable=False)
-    customer_id        = Column(Integer, nullable=False)
-    driver_id          = Column(Integer, nullable=False)
-    restaurant_id      = Column(Integer, nullable=False)
-    agent_id           = Column(Integer, nullable=False)
-    reason_id          = Column(Integer, nullable=False)
-    priority_id        = Column(Integer, nullable=False)
-    channel_id         = Column(Integer, nullable=False)
-    status             = Column(String(8), nullable=False)
-    refund_amount      = Column(Numeric, nullable=False)
-    created_at         = Column(DateTime, nullable=False)
-    first_response_at  = Column(DateTime, nullable=False)
-    resolved_at        = Column(DateTime, nullable=False)
-    sla_first_due_at   = Column(DateTime, nullable=False)
-    sla_resolve_due_at = Column(DateTime, nullable=False)
+    ticket_id:          str
+    order_id:           str
+    customer_id:        int
+    driver_id:          int
+    restaurant_id:      int
+    agent_id:           int
+    reason_id:          int
+    priority_id:        int
+    channel_id:         int
+    status:             str
+    refund_amount:      Decimal
+    created_at:         datetime.datetime
+    first_response_at:  datetime.datetime
+    resolved_at:        datetime.datetime
+    sla_first_due_at:   datetime.datetime
+    sla_resolve_due_at: datetime.datetime

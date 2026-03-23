@@ -1,9 +1,7 @@
-"""ReasonCategory — SQLAlchemy model for dim_reason_category (SCD Type 0 — freeze)."""
-from sqlalchemy import Column, Integer, String
+from dataclasses import dataclass
 from models.base import Base
 
-
+@dataclass
 class ReasonCategory(Base):
-
-    reason_category_id = Column(Integer, primary_key=True)
-    category_name      = Column(String(8), nullable=False)
+    reason_category_id: int
+    category_name:      str

@@ -1,9 +1,7 @@
-"""Team — SQLAlchemy model for dim_team (SCD Type 1)."""
-from sqlalchemy import Column, Integer, String
+from dataclasses import dataclass
 from models.base import Base
 
-
+@dataclass
 class Team(Base):
-
-    team_id   = Column(Integer, primary_key=True)
-    team_name = Column(String(15), nullable=False)
+    team_id:   int
+    team_name: str

@@ -1,11 +1,9 @@
-"""City — SQLAlchemy model for dim_city (SCD Type 0 — freeze)."""
-from sqlalchemy import Column, Integer, String
+from dataclasses import dataclass
 from models.base import Base
 
-
+@dataclass
 class City(Base):
-
-    city_id   = Column(Integer, primary_key=True)
-    city_name = Column(String(10), nullable=False)
-    country   = Column(String(5), nullable=False)
-    timezone  = Column(String(12), nullable=False)
+    city_id:   int
+    city_name: str
+    country:   str
+    timezone:  str

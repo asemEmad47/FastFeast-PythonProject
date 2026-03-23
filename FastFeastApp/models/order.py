@@ -1,20 +1,19 @@
-"""Order — SQLAlchemy model for fact_order."""
-from sqlalchemy import Column, Integer, String, Numeric
+from decimal import Decimal
+from dataclasses import dataclass
 from models.base import Base
 
-
+@dataclass
 class Order(Base):
-
-    order_id         = Column(String(36), primary_key=True)
-    customer_id      = Column(Integer, nullable=False)
-    restaurant_id    = Column(Integer, nullable=False)
-    driver_id        = Column(Integer, nullable=False)
-    region_id        = Column(Integer, nullable=False)
-    order_amount     = Column(Numeric, nullable=False)
-    delivery_fee     = Column(Numeric, nullable=False)
-    discount_amount  = Column(Integer, nullable=False)
-    total_amount     = Column(Numeric, nullable=False)
-    order_status     = Column(String(9), nullable=False)
-    payment_method   = Column(String(6), nullable=False)
-    order_created_at = Column(String(30), nullable=False)
-    delivered_at     = Column(String(30))
+    order_id:         str
+    customer_id:      int
+    restaurant_id:    int
+    driver_id:        int
+    region_id:        int
+    order_amount:     Decimal
+    delivery_fee:     Decimal
+    discount_amount:  int
+    total_amount:     Decimal
+    order_status:     str
+    payment_method:   str
+    order_created_at: str
+    delivered_at:     str = None

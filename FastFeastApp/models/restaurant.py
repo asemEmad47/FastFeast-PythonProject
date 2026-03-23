@@ -1,22 +1,21 @@
-"""Restaurant — SQLAlchemy model for dim_restaurant (SCD Type 2)."""
-from sqlalchemy import Column, Integer, String, Date, DateTime, Numeric, Boolean, func
+import datetime
+from decimal import Decimal
+from dataclasses import dataclass
 from models.base import Base
 
-
+@dataclass
 class Restaurant(Base):
-
-    restaurant_id     = Column(Integer, primary_key=True, nullable=False)
-    restaurant_name   = Column(String(19))
-    region_id         = Column(Integer, nullable=False)
-    category_id       = Column(Integer, nullable=False)
-    price_tier        = Column(String(4), nullable=False)
-    rating_avg        = Column(Numeric)
-    prep_time_avg_min = Column(Integer, nullable=False)
-    is_active         = Column(Boolean, nullable=False)
-    created_at        = Column(DateTime, default=func.now())
-    updated_at        = Column(DateTime, default=func.now(), onupdate=func.now())
-    # SCD Type 2
-    surrogate_key     = Column(String(36))
-    is_current        = Column(Boolean)
-    valid_from        = Column(Date)
-    valid_to          = Column(Date)
+    restaurant_id:     int
+    restaurant_name:   str
+    region_id:         int
+    category_id:       int
+    price_tier:        str
+    rating_avg:        Decimal
+    prep_time_avg_min: int
+    is_active:         bool
+    created_at:        datetime.datetime = None
+    updated_at:        datetime.datetime = None
+    surrogate_key:     str               = None
+    is_current:        bool              = None
+    valid_from:        datetime.date     = None
+    valid_to:          datetime.date     = None

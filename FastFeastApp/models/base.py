@@ -1,9 +1,5 @@
-"""
-Base — SQLAlchemy declarative base shared by every model.
-All model files import Base from here.
-"""
-from sqlalchemy.orm import DeclarativeBase
+from dataclasses import dataclass
 
-
-class Base(DeclarativeBase):
+@dataclass
+class Base:
     pass
