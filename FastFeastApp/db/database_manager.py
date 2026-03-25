@@ -1,39 +1,71 @@
 """
 DatabaseManager — Singleton Pattern.
 
-One instance, one engine, one session factory.
-All repositories call session_scope() — never manage sessions themselves.
+One instance, one connection.
+All repositories call execute() or cursor_scope() — never manage connections themselves.
 """
 from __future__ import annotations
 from contextlib import contextmanager
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
-from config.settings import DATABASE_URL
+import snowflake.connector
+from snowflake.connector import SnowflakeConnection
+from snowflake.connector.cursor import SnowflakeCursor
+from config.settings import (
+    SNOWFLAKE_ACCOUNT,
+    SNOWFLAKE_USER,
+    SNOWFLAKE_PASSWORD,
+    SNOWFLAKE_DATABASE,
+    SNOWFLAKE_SCHEMA,
+    SNOWFLAKE_WAREHOUSE,
+    SNOWFLAKE_ROLE
+)
 
 
 class DatabaseManager:
 
-    _instance: DatabaseManager = None
+    _instance: DatabaseManager | None = None
 
     def __new__(cls) -> DatabaseManager:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            cls._instance._engine  = create_engine(DATABASE_URL, echo=False)
-            cls._instance._Session = sessionmaker(bind=cls._instance._engine)
+            cls._instance._connection = cls._instance._create_connection()
         return cls._instance
 
-    def get_session(self) -> Session:
-        return self._Session()
+    def _create_connection(self) -> SnowflakeConnection:
+        return snowflake.connector.connect(
+            account   = SNOWFLAKE_ACCOUNT,
+            user      = SNOWFLAKE_USER,
+            password  = SNOWFLAKE_PASSWORD,
+            database  = SNOWFLAKE_DATABASE,
+            schema    = SNOWFLAKE_SCHEMA,
+            warehouse = SNOWFLAKE_WAREHOUSE,
+            role      = SNOWFLAKE_ROLE
+        )
+
+    @property
+    def connection(self) -> SnowflakeConnection:
+        return self._connection
 
     @contextmanager
-    def session_scope(self):
-        """Provide a transactional scope — commit on success, rollback on error."""
-        session = self._Session()
+    def cursor_scope(self) -> SnowflakeCursor:
+        """
+        Provide a managed cursor — closes automatically after use.
+        Use this for all query execution across repositories.
+        """
+        cursor = self._connection.cursor()
         try:
-            yield session
-            session.commit()
-        except Exception:
-            session.rollback()
-            raise
+            yield cursor
         finally:
-            session.close()
+            cursor.close()
+
+    def execute(self, sql: str, params: tuple = None) -> list:
+        """
+        Fire-and-forget execution for single statements.
+        Returns all fetched rows.
+        """
+        with self.cursor_scope() as cursor:
+            cursor.execute(sql, params)
+            return cursor.fetchall()
+
+    def close(self) -> None:
+        if self._connection and not self._connection.is_closed():
+            self._connection.close()
