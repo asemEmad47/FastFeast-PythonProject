@@ -14,7 +14,8 @@ class VariablesInitializer:
         self.parser: ConfFileParser
         self.registry: DataRegistry
         self.audit: Audit
-        self.file_tracker: FileTracker
+        self.batch_file_tracker: FileTracker
+        self.micro_batch_file_tracker: FileTracker
         self.workflow: WorkFlow
         self.batch: Batch
         self.micro_batch: MicroBatch
@@ -27,30 +28,29 @@ class VariablesInitializer:
         self.parser = ConfFileParser()
         self.parser.parse("conf/pipeline.yaml")
 
-        self.registry     = DataRegistry(self.parser)
-        self.audit        = Audit()
-        self.file_tracker = FileTracker()
+        self.registry = DataRegistry(self.parser)
+        self.audit = Audit()
 
-        self.workflow              = WorkFlow()
-        self.workflow.registry     = self.registry
-        self.workflow.parser       = self.parser
-        self.workflow.audit        = self.audit
-        self.workflow.alerter      = EmailTask()
-        self.workflow.file_tracker = self.file_tracker
-
-        self.batch_interval   = self.parser.get_batch_interval()
-        self.batch_path       = self.parser.get_batch_path()
+        self.batch_interval = self.parser.get_batch_interval()
+        self.batch_path = self.parser.get_batch_path()
         self.micro_batch_path = self.parser.get_micro_batch_path()
-        self.archive_dir      = self.parser.get_archive_dir()
+        self.archive_dir = self.parser.get_archive_dir()
 
-        self.batch              = Batch()
-        self.batch.workflow     = self.workflow
-        self.batch.file_tracker = self.file_tracker
-        self.batch.source_path  = self.batch_path
+        self.micro_batch = MicroBatch()
+        self.micro_batch_file_tracker = FileTracker(self.micro_batch, self.archive_dir)
+        self.micro_batch.file_tracker = self.micro_batch_file_tracker
+        self.micro_batch.source_path = self.micro_batch_path
 
-        self.micro_batch              = MicroBatch()
-        self.micro_batch.workflow     = self.workflow
-        self.micro_batch.file_tracker = self.file_tracker
-        self.micro_batch.source_path  = self.micro_batch_path
+        self.batch = Batch()
+        self.batch_file_tracker = FileTracker(self.batch, self.archive_dir)
+        self.batch.file_tracker = self.batch_file_tracker
+        self.batch.source_path = self.batch_path
 
-        self.file_tracker._micro_batch = self.micro_batch
+        self.workflow = WorkFlow()
+        self.workflow.registry = self.registry
+        self.workflow.parser = self.parser
+        self.workflow.audit = self.audit
+        self.workflow.alerter = EmailTask()
+
+        self.micro_batch.workflow = self.workflow
+        self.batch.workflow = self.workflow
