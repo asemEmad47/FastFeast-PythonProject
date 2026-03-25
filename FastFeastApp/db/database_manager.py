@@ -38,8 +38,20 @@ class DatabaseManager:
             database  = SNOWFLAKE_DATABASE,
             schema    = SNOWFLAKE_SCHEMA,
             warehouse = SNOWFLAKE_WAREHOUSE,
-            role      = SNOWFLAKE_ROLE
+            role      = SNOWFLAKE_ROLE,
+            client_session_keep_alive = True
         )
+    
+    def _is_alive(self) -> bool: # Work around to check whether the connection is alive or not to avoid silent timeout
+        try:
+            self._connection.cursor().execute("SELECT 1")
+            return True
+        except Exception:
+            return False
+        
+    def _ensure_connection(self) -> None:
+        if self._connection.is_closed() or not self._is_alive():
+            self._connection = self._create_connection()
 
     @property
     def connection(self) -> SnowflakeConnection:
@@ -51,6 +63,7 @@ class DatabaseManager:
         Provide a managed cursor — closes automatically after use.
         Use this for all query execution across repositories.
         """
+        self._ensure_connection() # Important to ensure connectivity with snowflake before init the cursor
         cursor = self._connection.cursor()
         try:
             yield cursor
