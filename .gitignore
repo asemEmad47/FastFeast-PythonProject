@@ -208,3 +208,6 @@ __marimo__/
 
 # Local env variables
 .env
+
+# Local VSCode Configuration
+.vscode
