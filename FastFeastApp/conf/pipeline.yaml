@@ -327,7 +327,7 @@ tables:
         right: teams.team_id
         type: left
     target_table: AgentsDim
-    table_type: dimension
+    table_type: dynamic_dimension
     repository: AgentRepository
 
     required_fields:
@@ -359,7 +359,7 @@ tables:
         right: segments.segment_id
         type: left
     target_table: CustomersDim
-    table_type: dimension
+    table_type: dynamic_dimension
     repository: CustomerRepository
     primary_key: customer_id
     keep_columns:
@@ -384,7 +384,7 @@ tables:
   RegionsDim:
     source: [regions]
     target_table: RegionsDim
-    table_type: dimension
+    table_type: static_dimension
     repository: RegionRepository
     primary_key: region_id
     foreign_keys:
@@ -406,7 +406,7 @@ tables:
       - left: restaurants.category_id
         right: categories.category_id
         type: left
-    table_type: dimension
+    table_type: dynamic_dimension
     repository: RestaurantRepository
 
     primary_key: restaurant_id
@@ -431,7 +431,7 @@ tables:
   ChannelsDim:
     source: [channels]
     target_table: ChannelsDim
-    table_type: dimension
+    table_type: static_dimension
     repository: ChannelRepository
 
     primary_key: channel_id
@@ -448,7 +448,7 @@ tables:
   CitiesDim:
     source: [cities]
     target_table: CitiesDim
-    table_type: dimension
+    table_type: static_dimension
     repository: CitiesRepository
     primary_key: city_id
 
@@ -469,7 +469,7 @@ tables:
     generated: true   
 
     target_table: DateDim
-    table_type: dimension
+    table_type: dynamic_dimension
     repository: DateRepository
 
     primary_key: date_id
@@ -489,7 +489,7 @@ tables:
     source: [drivers]
 
     target_table: DriversDim
-    table_type: dimension
+    table_type: dynamic_dimension
     repository: DriversRepository
 
     primary_key: driver_id
@@ -526,7 +526,7 @@ tables:
         type: left
 
     target_table: ReasonsDim
-    table_type: dimension
+    table_type: static_dimension
     repository: ReasonRepository
 
     primary_key: reason_id
