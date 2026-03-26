@@ -4,13 +4,13 @@ from app.variables_initializer import VariablesInitializer
 
 class AppManager:
 
-    def __init__(self) -> None:
+    def __init__(self):
         self._initializer = VariablesInitializer()
 
-    def initialize(self) -> None:
+    def initialize(self):
         self._initializer.initialize_variables()
 
-    def start(self) -> None:
+    def start(self):
         init = self._initializer
 
         t_batch = threading.Thread(
@@ -30,7 +30,9 @@ class AppManager:
         t_batch.join() # To keep main thread alive while this thread is running
         t_micro.join() 
 
-    def _batch_loop(self, batch, interval: int) -> None:
+    def _batch_loop(self, batch, interval: int):
         while True:
-            time.sleep(interval)
+            print("Running batch process...")
             batch.run()
+            time.sleep(interval)
+            
