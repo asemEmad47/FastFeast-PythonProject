@@ -540,7 +540,7 @@ tables:
     keep_columns:
       - reason_id
       - reason_name
-      - reason_category_name   
+      - category_name   
       - severity_level
       - typical_refund_pct  
 
