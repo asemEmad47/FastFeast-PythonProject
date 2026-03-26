@@ -346,8 +346,8 @@ tables:
       - skill_level
       - hire_date
       - avg_handle_time_min
-      # - resolution_rate
-      # - csat_score
+      - resolution_rate
+      - csat_score
       - is_active
       - created_at
       - updated_at
@@ -362,15 +362,14 @@ tables:
     table_type: dimension
     repository: CustomerRepository
     primary_key: customer_id
-    foreign_keys:
-      region_id: RegionsDim.region_id
     keep_columns:
       - customer_id
       - full_name
       - email
       - phone
-      - region_id
       - segment_name
+      - signup_date 
+      - gender 
       - priority_support
       - discount_pct
       - created_at
@@ -398,7 +397,6 @@ tables:
     required_fields:
       - region_id
       - region_name
-      - city_id
       - delivery_base_fee
 
   RestaurantsDim:
@@ -419,21 +417,16 @@ tables:
       - prep_time_avg_min
       - is_active
 
-    foreign_keys:
-      region_id: RegionsDim.region_id
-
     keep_columns:
       - restaurant_id
       - restaurant_name
-      - region_id
       - category_name
       - price_tier
-      #- rating_avg
+      - rating_avg
       - prep_time_avg_min
       - is_active
       - created_at
       - updated_at
-
 
   ChannelsDim:
     source: [channels]
@@ -508,15 +501,11 @@ tables:
       - hire_date
       - is_active
 
-    foreign_keys:
-      region_id: RegionsDim.region_id
-
     keep_columns:
       - driver_id
       - driver_name
       - driver_phone
       - national_id
-      - region_id
       - shift
       - vehicle_type
       - hire_date
@@ -551,7 +540,7 @@ tables:
     keep_columns:
       - reason_id
       - reason_name
-      - category_name   
+      - reason_category_name   
       - severity_level
       - typical_refund_pct  
 
@@ -597,6 +586,7 @@ tables:
     primary_key: ticket_id
 
     keep_columns:
+      - transaction_id
       - ticket_id
       - order_id
       - customer_id
@@ -611,7 +601,6 @@ tables:
       - created_at
       - first_response_at
       - resolved_at
-      - reopen_count
       - resolution_time_min
       - first_response_time_min
       - sla_first_response_breached
@@ -624,6 +613,7 @@ tables:
       - discount_amount 
       - total_amount 
       - revenue_impact
+      - Status
 
     aggregated_columns:
       - name: resolution_time_min
@@ -634,7 +624,5 @@ tables:
         expression: "first_response_time_min > sla_first_due_at"
       - name: sla_resolution_breached
         expression: "resolution_time_min > sla_resolve_due_at"
-      - name: reopen_count
-        expression: "select ticket_id, count(new_status) from ticket_events where new_status = 'open' group by ticket_id "
       - name: revenue_impact
         expression: "refund_amount + discount_amount"
