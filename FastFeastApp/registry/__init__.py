@@ -103,3 +103,14 @@ pprint.pprint(batch_conf)
 # list_files_in_directory(batch_path)
 # list_files_in_directory(microbatch_path)
 # list_files_in_directory(archive_path)
+
+################################################
+# test batch methods
+################################################
+
+
+
+###############################################
+# mai test your data registry code under this comment
+###############################################
+
