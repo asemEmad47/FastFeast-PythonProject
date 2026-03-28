@@ -1,6 +1,10 @@
 from conf_file_parser import ConfFileParser
 import pprint
 import os
+import sys
+
+# Add FastFeastApp/ to Python path so 'models' package is found
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 base_dir = os.path.dirname(__file__)
 pipeline_file = os.path.abspath(os.path.join(base_dir, "..", "conf", "pipeline.yaml"))
@@ -123,3 +127,8 @@ batch_conf = parser.parse_batch_conf(batch_file)
 # mai test your data registry code under this comment
 ###############################################
 
+
+from data_registry import DataRegistry
+
+registry = DataRegistry(parser)
+registry.summary()

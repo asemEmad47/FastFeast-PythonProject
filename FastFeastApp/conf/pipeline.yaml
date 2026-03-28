@@ -545,7 +545,7 @@ tables:
       - typical_refund_pct  
 
   FactTickets:
-    source: [tickets]
+    source: [tickets,orders]
     joins:
       - left: tickets.order_id
         right: orders.order_id
