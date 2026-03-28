@@ -127,7 +127,7 @@ batch_conf = parser.parse_batch_conf(batch_file)
 # mai test your data registry code under this comment
 ###############################################
 
-######################33
+######################
 from data_registry import DataRegistry
 
 registry = DataRegistry(parser)
