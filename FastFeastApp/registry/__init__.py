@@ -18,8 +18,8 @@ batch_conf = parser.parse_batch_conf(batch_file)
 # print("\n=== Full pipeline.yaml conf ===")
 # pprint.pprint(pipeline_conf)
 
-print("\n=== Full batch conf ===")
-pprint.pprint(batch_conf)
+# print("\n=== Full batch conf ===")
+# pprint.pprint(batch_conf)
 
 # # -----------------------------
 # # Table config getters
@@ -94,7 +94,6 @@ pprint.pprint(batch_conf)
 #     if not path or not os.path.exists(path):
 #         print(f"Path does not exist: {path}")
 #         return
-    
 #     print(f"\nFiles in: {path}")
 #     for file in os.listdir(path):
 #         full_path = os.path.join(path, file)
@@ -107,7 +106,17 @@ pprint.pprint(batch_conf)
 ################################################
 # test batch methods
 ################################################
+# archive_stream_path = parser.get_archive_dir_stream()
+# archive_batch_path = parser.get_archive_dir_batch()
 
+# print("Archive stream dir:", archive_stream_path)
+# print("Archive batch dir:", archive_batch_path)
+
+# archive_stream_path = resolve_path(parser.get_archive_dir_stream())
+# archive_batch_path = resolve_path(parser.get_archive_dir_batch())
+
+# list_files_in_directory(archive_stream_path)
+# list_files_in_directory(archive_batch_path)
 
 
 ###############################################

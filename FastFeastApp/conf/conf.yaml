@@ -3,3 +3,5 @@ batch:
   batch_path: "../../../FastFeast-Data/scripts/data/input/batch"  
   micro_batch_path: "../../../FastFeast-Data/scripts/data/input/stream" 
   archive_dir_path: "../../../FastFeast-Data/archive"
+  archive_dir_stream: "../../../FastFeast-Data/archive/stream"
+  archive_dir_batch: "../../../FastFeast-Data/archive/batch"

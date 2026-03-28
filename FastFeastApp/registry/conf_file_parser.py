@@ -107,4 +107,10 @@ class ConfFileParser:
 
     def get_archive_dir(self) -> str:
         return self._batch_conf.get("batch", {}).get("archive_dir_path")
+
+    def get_archive_dir_batch(self) -> str:
+        return self._batch_conf.get("batch", {}).get("archive_dir_batch")
+    
+    def get_archive_dir_stream(self) -> str:
+        return self._batch_conf.get("batch", {}).get("archive_dir_stream")
         
