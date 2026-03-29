@@ -18,16 +18,18 @@ def mimic_schema_validation(df: pd.DataFrame) -> tuple[bool, list[dict], pd.Data
     return (False, bad_schemas, df) if bad_schemas else (True, [], df)
 
 
-def mimic_rows_validation(df: pd.DataFrame, required: list[str]) -> tuple[bool, list[dict], pd.DataFrame]:
+def mimic_rows_validation(df: pd.DataFrame, required: list[str]) -> tuple[bool, list[dict], pd.DataFrame, int]:
     bad_rows = []
-    bad_idx  = df[df[required].isnull().any(axis=1)].index
+    null_count = 0
+    bad_idx = df[df[required].isnull().any(axis=1)].index
     for idx in bad_idx:
         bad_rows.append({
             "row":    df.loc[idx].to_string(),
             "reason": f"Missing required fields: {[c for c in required if pd.isnull(df.loc[idx, c])]}"
         })
+        null_count += 1
     clean_df = df.drop(bad_idx)
-    return True, bad_rows, clean_df
+    return True, bad_rows, clean_df, null_count
 
 
 def mimic_duplicate_check(df: pd.DataFrame, key: str) -> tuple[bool, int, pd.DataFrame]:
@@ -58,23 +60,21 @@ def mimic_dwh_load(df: pd.DataFrame) -> tuple[bool, int]:
 
 def process_file(audit: Audit, file_name: str, df: pd.DataFrame):
 
-    audit.reset_file()               # wipe file counters
-    audit.set_file(file_name)        # set file_name + run_id
-    audit.start_timer()              # log PIPELINE_START
+    audit.reset_file()
+    audit.set_file(file_name)
+    audit.start_timer()
 
     total = len(df)
 
     # ── Stage 1: Schema Validation ──────────────
     audit.reset_stage()
+    audit.current_stage = "schema_validation"
     t0 = time.time()
     ok, bad_schemas, df = mimic_schema_validation(df)
     latency = int((time.time() - t0) * 1000)
 
     for entry in bad_schemas:
         audit.log_issue(
-            stage="schema_validation",
-            record_id=entry["model"],
-            field="schema",
             issue=entry["reason"],
             value=None,
             action="quarantined"
@@ -84,7 +84,7 @@ def process_file(audit: Audit, file_name: str, df: pd.DataFrame):
         "passed_count":      total - len(bad_schemas),
         "quarantined_count": len(bad_schemas),
     })
-    audit.log_file_result("schema_validation", total, total - len(bad_schemas), len(bad_schemas), latency, ok)
+    audit.log_file_result(total, total - len(bad_schemas), len(bad_schemas), latency, ok)
 
     if not ok:
         audit.log_pipeline_end()
@@ -92,28 +92,27 @@ def process_file(audit: Audit, file_name: str, df: pd.DataFrame):
 
     # ── Stage 2: Rows Validation ─────────────────
     audit.reset_stage()
+    audit.current_stage = "rows_validation"
     t0 = time.time()
-    ok, bad_rows, df = mimic_rows_validation(df, required=["id", "name"])
+    ok, bad_rows, df, null_count = mimic_rows_validation(df, required=["id", "name"])
     latency = int((time.time() - t0) * 1000)
 
     for entry in bad_rows:
         audit.log_issue(
-            stage="rows_validation",
-            record_id="unknown",
-            field="unknown",
             issue=entry["reason"],
             value=entry["row"],
             action="quarantined"
         )
     audit.track_metrics({
         "quarantined_count": len(bad_rows),
+        "null_count":        null_count,
         "passed_count":      len(df),
-        "null_counts":       {"required_field": sum(1 for e in bad_rows if "Missing" in e["reason"])}
     })
-    audit.log_file_result("rows_validation", total, len(df), len(bad_rows), latency, True)
+    audit.log_file_result(total, len(df), len(bad_rows), latency, True)
 
     # ── Stage 3: Duplicate Check ─────────────────
     audit.reset_stage()
+    audit.current_stage = "duplicate_check"
     t0 = time.time()
     ok, dupes, df = mimic_duplicate_check(df, key="id")
     latency = int((time.time() - t0) * 1000)
@@ -123,11 +122,12 @@ def process_file(audit: Audit, file_name: str, df: pd.DataFrame):
         "quarantined_count": dupes,
         "passed_count":      len(df),
     })
-    audit.log_file_result("duplicate_check", len(df) + dupes, len(df), dupes, latency, True)
+    audit.log_file_result(len(df) + dupes, len(df), dupes, latency, True)
 
     # ── Stage 4: Orphan Check (micro_batch only) ──
     if audit.mode == "micro_batch":
         audit.reset_stage()
+        audit.current_stage = "orphan_check"
         valid_customer_ids = {1, 2, 3, 4, 5}
         t0 = time.time()
         ok, bad_rows, df = mimic_orphan_check(df, fk_col="customer_id", valid_ids=valid_customer_ids)
@@ -135,9 +135,6 @@ def process_file(audit: Audit, file_name: str, df: pd.DataFrame):
 
         for entry in bad_rows:
             audit.log_issue(
-                stage="orphan_check",
-                record_id="unknown",
-                field=entry["reason"],
                 issue="orphan_reference",
                 value=entry["row"],
                 action="quarantined"
@@ -147,10 +144,11 @@ def process_file(audit: Audit, file_name: str, df: pd.DataFrame):
             "quarantined_count": len(bad_rows),
             "passed_count":      len(df),
         })
-        audit.log_file_result("orphan_check", len(df) + len(bad_rows), len(df), len(bad_rows), latency, True)
+        audit.log_file_result(len(df) + len(bad_rows), len(df), len(bad_rows), latency, True)
 
     # ── Stage 5: DWH Load ────────────────────────
     audit.reset_stage()
+    audit.current_stage = "dwh_load"
     t0 = time.time()
     ok, loaded = mimic_dwh_load(df)
     latency = int((time.time() - t0) * 1000)
@@ -159,9 +157,9 @@ def process_file(audit: Audit, file_name: str, df: pd.DataFrame):
         "total_records": loaded,
         "passed_count":  loaded,
     })
-    audit.log_file_result("dwh_load", loaded, loaded, 0, latency, True)
+    audit.log_file_result(loaded, loaded, 0, latency, True)
 
-    audit.log_pipeline_end()         # log file summary + accumulate to batch
+    audit.log_pipeline_end()
 
 
 # ─────────────────────────────────────────────
@@ -187,9 +185,9 @@ def run_batch():
     files = {
         "customers.csv": pd.DataFrame([
             {"id": 1, "name": "Alice",  "customer_id": 1},
-            {"id": 2, "name": None,     "customer_id": 2},   # null name
+            {"id": 2, "name": None,     "customer_id": 2},
             {"id": 3, "name": "Bob",    "customer_id": 3},
-            {"id": 3, "name": "Bob",    "customer_id": 3},   # duplicate
+            {"id": 3, "name": "Bob",    "customer_id": 3},
             {"id": 4, "name": "Carol",  "customer_id": 4},
         ]),
         "drivers.csv": pd.DataFrame([
@@ -199,7 +197,7 @@ def run_batch():
         ]),
         "restaurants.json": pd.DataFrame([
             {"id": 1, "name": "Rest A", "customer_id": 1},
-            {"id": 2, "name": None,     "customer_id": 2},   # null name
+            {"id": 2, "name": None,     "customer_id": 2},
             {"id": 3, "name": "Rest C", "customer_id": 3},
         ]),
     }
@@ -217,15 +215,15 @@ def run_micro_batch():
     files = {
         "orders.json": pd.DataFrame([
             {"id": 1, "name": "Order A", "customer_id": 1},
-            {"id": 2, "name": "Order B", "customer_id": 99999},  # orphan
+            {"id": 2, "name": "Order B", "customer_id": 99999},
             {"id": 3, "name": "Order C", "customer_id": 2},
-            {"id": 4, "name": None,      "customer_id": 3},      # null name
+            {"id": 4, "name": None,      "customer_id": 3},
             {"id": 5, "name": "Order E", "customer_id": 3},
         ]),
         "tickets.csv": pd.DataFrame([
             {"id": 1, "name": "Ticket A", "customer_id": 1},
-            {"id": 2, "name": "Ticket B", "customer_id": 88888},  # orphan
-            {"id": 2, "name": "Ticket B", "customer_id": 88888},  # duplicate
+            {"id": 2, "name": "Ticket B", "customer_id": 88888},
+            {"id": 2, "name": "Ticket B", "customer_id": 88888},
             {"id": 3, "name": "Ticket C", "customer_id": 3},
         ]),
         "ticket_events.json": pd.DataFrame([
