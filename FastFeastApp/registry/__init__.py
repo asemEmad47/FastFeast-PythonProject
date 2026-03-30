@@ -56,7 +56,6 @@ registry.load_config(pipeline_file)
 #     print(f"File name: {registry.get_file_name(file_key)}")
 #     print(f"File type: {registry.get_file_type(file_key)}")
 #     print(f"Required fields: {registry.get_file_required_fields(file_key)}")
-#     print(f"File columns: {registry.get_file_columns(file_key)}")
 #     print(f"PII columns: {registry.get_pii_columns(file_key)}")
 
 # -----------------------------

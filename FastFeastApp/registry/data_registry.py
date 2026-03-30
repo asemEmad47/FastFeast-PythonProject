@@ -414,10 +414,6 @@ class DataRegistry:
         conf = self.get_file_conf(file_key)
         return self._parser.get_file_type(conf) or []
 
-    def get_file_columns(self, file_key: str) -> list[str]:
-        conf = self.get_file_conf(file_key)
-        return self._parser.get_file_columns(conf) or []
-
     def get_pii_columns(self, file_key: str) -> list[str]:
         conf = self.get_file_conf(file_key)
         return self._parser.get_pii_columns(conf) or []

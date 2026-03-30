@@ -110,11 +110,6 @@ class ConfFileParser:
             return []
         return conf_section.get("file_name", [])
     
-    def get_file_columns(self, conf_section: dict) -> list[str]:
-        if not conf_section:
-            return []
-        return conf_section.get("file_columns", [])
-    
     def get_pii_columns(self, conf_section: dict) -> list[str]:
         if not conf_section:
             return []
