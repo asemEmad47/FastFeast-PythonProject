@@ -2,6 +2,7 @@ from conf_file_parser import ConfFileParser
 import pprint
 import os
 import sys
+from data_registry import DataRegistry
 
 # Add FastFeastApp/ to Python path so 'models' package is found
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -10,125 +11,118 @@ base_dir = os.path.dirname(__file__)
 pipeline_file = os.path.abspath(os.path.join(base_dir, "..", "conf", "pipeline.yaml"))
 batch_file    = os.path.abspath(os.path.join(base_dir, "..", "conf", "conf.yaml"))
 
+# Initialize parser + registry
 parser = ConfFileParser()
-
-# Parse the two files separately
-pipeline_conf = parser.parse(pipeline_file)       # pipeline.yaml
-batch_conf    = parser.parse_batch_conf(batch_file)
-
-pipeline_conf = parser.parse(pipeline_file)
-batch_conf = parser.parse_batch_conf(batch_file)
-
-# print("\n=== Full pipeline.yaml conf ===")
-# pprint.pprint(pipeline_conf)
-
-# print("\n=== Full batch conf ===")
-# pprint.pprint(batch_conf)
-
-# # -----------------------------
-# # Table config getters
-# # -----------------------------
-# print("\n=== Table Config Getters ===")
-# tables = parser.get_all_tables_conf()
-# print("All tables:", list(tables.keys()))
-
-# for table_key in tables:
-#     conf_section = parser.get_table_conf(table_key)
-#     print(f"\nTable: {table_key}")
-#     print("Table Configuration: ", conf_section)
-#     print("Target table name:", parser.get_target_table_name(conf_section))
-#     print("Target table type:", parser.get_target_table_type(conf_section))
-#     print("Primary key:", parser.get_target_primary_key(conf_section))
-#     print("Foreign keys:", parser.get_target_foreign_keys(conf_section))
-#     print("Required fields:", parser.get_target_required_fields(conf_section))
-#     print("Source tables:", parser.get_target_source(conf_section))
-#     print("Joins:", parser.get_join_config(conf_section))
-#     print("keep_coloumns:", parser.get_target_columns(conf_section))
-#     print("Fact dimension joins:", parser.get_fact_join_config(conf_section))
-#     print("Fact aggregated columns:", parser.get_fact_aggregated_columns(conf_section))
+registry = DataRegistry(parser)
 
 # -----------------------------
-# File config getters
+# Load pipeline config
+# -----------------------------
+registry.load_config(pipeline_file)
+
+# print("\n=== Table Config Getters ===")
+
+# all_tables_conf = registry.get_all_tables_conf()
+# print("All tables:", list(all_tables_conf.keys()))
+
+# for table_key in all_tables_conf:
+#     table_conf = registry.get_table_conf(table_key)
+
+#     print(f"\nTable: {table_key}")
+#     print("Table Configuration:", table_conf)
+
+#     print("Target table name:", registry.get_target_table_name(table_key))
+#     print("Target table type:", registry.get_target_table_type(table_key))
+#     print("Primary key:", registry.get_target_primary_key(table_key))
+#     print("Foreign keys:", registry.get_target_foreign_keys(table_key))
+#     print("Required fields:", registry.get_target_required_fields(table_key))
+#     print("Source tables:", registry.get_target_source(table_key))
+#     print("Joins:", registry.get_join_config(table_key))
+#     print("Keep columns:", registry.get_dimension_columns(table_key))
+#     print("Fact dimension joins:", registry.get_fact_join_config(table_key))
+#     print("Fact aggregated columns:", registry.get_aggregated_columns(table_key))
+
+# -----------------------------
+# File Config Getters
 # -----------------------------
 # print("\n=== File Config Getters ===")
-# workflow_files = parser.get_workflow_files()  
 
+# workflow_files = registry.get_workflow_files()  
 # for file_key in workflow_files:
-#     file_conf = parser.get_file_conf(file_key)  
-#     name = parser.get_file_name(file_conf)
-#     type = parser.get_file_type(file_conf)
-#     required_fields = parser.get_file_required_fields(file_conf)
-#     columns = parser.get_file_columns(file_conf)
-#     print(f"File key: {file_key}")
-#     print(f"File config: {file_conf}")
-#     print(f"File name: {name}")
-#     print(f"File type: {type}")
-#     print(f"Required fields: {required_fields}")
-#     print(f"File columns: {columns}")
+#     file_conf = registry.get_file_conf(file_key)
 
-# # -----------------------------
-# # Batch / microbatch / archive paths
-# # -----------------------------
+#     print(f"\nFile key: {file_key}")
+#     print(f"File config: {file_conf}")
+#     print(f"File name: {registry.get_file_name(file_key)}")
+#     print(f"File type: {registry.get_file_type(file_key)}")
+#     print(f"Required fields: {registry.get_file_required_fields(file_key)}")
+#     print(f"PII columns: {registry.get_pii_columns(file_key)}")
+
+# -----------------------------
+# Load batch config
+# -----------------------------
+registry.load_config(batch_file)
+batch_section = registry.get_all_batch_conf()
+
+# print("\n=== Full Batch Config ===")
+# pprint.pprint(batch_section)
+
 # print("\n=== Batch / Microbatch / Archive Paths ===")
 
-# batch_path = parser.get_batch_path()
-# microbatch_path = parser.get_microbatch_path()
-# archive_path = parser.get_archive_dir()
+# batch_path = registry.get_batch_path()
+# microbatch_path = registry.get_microbatch_path()
+# archive_path = registry.get_archive_dir()
 
-# print("Batch interval:", parser.get_batch_interval())
+# print("Batch interval:", registry.get_batch_interval())
 # print("Batch path:", batch_path)
 # print("Microbatch path:", microbatch_path)
 # print("Archive dir:", archive_path)
 
-# import os
+# # Resolve paths
+# def resolve_path(path: str):
+#     return os.path.abspath(os.path.join(base_dir, path))
 
-# def resolve_path(relative_path: str):
-#     base_dir = os.path.dirname(__file__)
-#     return os.path.abspath(os.path.join(base_dir, relative_path))
-
-# batch_path = resolve_path(parser.get_batch_path())
-# microbatch_path = resolve_path(parser.get_microbatch_path())
-# archive_path = resolve_path(parser.get_archive_dir())
+# batch_path = resolve_path(batch_path)
+# microbatch_path = resolve_path(microbatch_path)
+# archive_path = resolve_path(archive_path)
 
 # print("Resolved Batch path:", batch_path)
 # print("Resolved Microbatch path:", microbatch_path)
 # print("Resolved Archive path:", archive_path)
 
-# def list_files_in_directory(path: str):
+# List files
+# def list_files(path: str):
 #     if not path or not os.path.exists(path):
 #         print(f"Path does not exist: {path}")
 #         return
 #     print(f"\nFiles in: {path}")
-#     for file in os.listdir(path):
-#         full_path = os.path.join(path, file)
-#         print(" -", file)
+#     for f in os.listdir(path):
+#         print(" -", f)
 
-# list_files_in_directory(batch_path)
-# list_files_in_directory(microbatch_path)
-# list_files_in_directory(archive_path)
+# list_files(batch_path)
+# list_files(microbatch_path)
+# list_files(archive_path)
 
-################################################
-# test batch methods
-################################################
-# archive_stream_path = parser.get_archive_dir_stream()
-# archive_batch_path = parser.get_archive_dir_batch()
+# -----------------------------
+# Archive extra paths
+# -----------------------------
+# print("\n=== Archive Paths ===")
+
+# archive_stream_path = registry.get_archive_dir_stream()
+# archive_batch_path = registry.get_archive_dir_batch()
+
+# archive_stream_path = resolve_path(archive_stream_path)
+# archive_batch_path = resolve_path(archive_batch_path)
 
 # print("Archive stream dir:", archive_stream_path)
 # print("Archive batch dir:", archive_batch_path)
 
-# archive_stream_path = resolve_path(parser.get_archive_dir_stream())
-# archive_batch_path = resolve_path(parser.get_archive_dir_batch())
+# list_files(archive_stream_path)
+# list_files(archive_batch_path)
 
-# list_files_in_directory(archive_stream_path)
-# list_files_in_directory(archive_batch_path)
-
-
-###############################################
-# mai test your data registry code under this comment
-###############################################
-
-######################
-from data_registry import DataRegistry
-
-registry = DataRegistry(parser)
-registry.summary()
+# # -----------------------------
+# # DataRegistry Summary
+# # -----------------------------
+registry.load_config(pipeline_file)
+# print("\n=== DataRegistry Summary ===")
+# registry.summary()

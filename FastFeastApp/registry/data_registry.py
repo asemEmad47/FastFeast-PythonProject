@@ -18,9 +18,10 @@ from __future__ import annotations
 import importlib
 import re
 from typing import Optional, TYPE_CHECKING
- 
+
 import pandas as pd
- 
+import yaml
+
 if TYPE_CHECKING:
     from conf_file_parser import ConfFileParser
  
@@ -66,6 +67,11 @@ class DataRegistry:
     def __init__(self, parser: "ConfFileParser") -> None:
         self._parser = parser
  
+        # ── raw configuration (loaded later) ──────────────────────────────
+        self._conf: dict = {}
+        self._files_conf: dict = {}
+        self._tables_conf: dict = {}
+
         # ── in-memory DataFrame store ──────────────────────────────────
         self._df_store: dict[str, pd.DataFrame] = {}
  
@@ -83,8 +89,28 @@ class DataRegistry:
         self._file_key_to_table:  dict[str, str]        = {}  # "agents"    → "AgentsDim"
         self._table_to_file_keys: dict[str, list[str]]  = {}  # "AgentsDim" → ["agents","teams"]
  
-        self._build_maps()
- 
+    def load_config(self, conf_path: str) -> None:
+        with open(conf_path, "r") as f:
+            self._conf = yaml.safe_load(f) or {}
+
+        # Extract sections safely (no assumptions)
+        self._files_conf = self._conf.get("files", {})
+        self._tables_conf = self._conf.get("tables", {})
+
+        # Reset maps before rebuilding
+        self._file_key_to_name.clear()
+        self._file_name_to_key.clear()
+        self._file_key_to_table.clear()
+        self._table_to_file_keys.clear()
+        self._models.clear()
+
+        # Only build maps if sections exist
+        if self._files_conf:
+            self._build_file_maps()
+
+        if self._tables_conf:
+            self._build_table_maps()
+            
     # ══════════════════════════════════════════════════════════════════
     # Internal: build all maps from yaml — called once in __init__
     # ══════════════════════════════════════════════════════════════════
@@ -98,10 +124,8 @@ class DataRegistry:
         Builds:
           file_key ↔ file_name
           file_key  → Model class  (auto-resolved via importlib)
-        """
-        all_files: dict = self._parser.get_workflow_files() or {}
- 
-        for file_key, file_conf in all_files.items():
+        """ 
+        for file_key, file_conf in self._files_conf.items():
  
             # file_key ↔ file_name
             file_name = self._parser.get_file_name(file_conf)
@@ -122,10 +146,8 @@ class DataRegistry:
         Builds:
           table_key → [file_keys]
           file_key  → table_key   (first table wins if a file feeds multiple)
-        """
-        all_tables: dict = self._parser.get_all_tables_conf() or {}
- 
-        for table_key, table_conf in all_tables.items():
+        """ 
+        for table_key, table_conf in self._tables_conf.items():
             sources: list = self._parser.get_target_source(table_conf) or []
             self._table_to_file_keys[table_key] = sources
  
@@ -268,10 +290,10 @@ class DataRegistry:
     # Config pass-through  (parser is always the source of truth)
     # ══════════════════════════════════════════════════════════════════
     def get_table_conf(self, table_key: str) -> dict:
-        return self._parser.get_table_conf(table_key)
+        return self._parser.get_table_conf(self._tables_conf, table_key) or {}
  
     def get_file_conf(self, file_key: str) -> dict:
-        return self._parser.get_file_conf(file_key)
+        return self._parser.get_file_conf(self._files_conf,file_key) or {}
  
     # ══════════════════════════════════════════════════════════════════
     # DataFrame store  (shared between pipeline phases)
@@ -326,3 +348,94 @@ class DataRegistry:
             print("  (empty)")
  
         print("=" * 62)
+
+    # ────────────── ConfFileParser Wrappers in DataRegistry ──────────────
+
+    # -------------------- Table config wrappers --------------------
+    def get_all_tables_conf(self) -> dict:
+        return self._parser.get_all_tables_conf(self._conf) or {}
+
+    def get_target_table_name(self, table_key: str) -> str:
+        conf = self.get_table_conf(table_key)
+        return self._parser.get_target_table_name(conf) or ""
+
+    def get_target_table_type(self, table_key: str) -> str:
+        conf = self.get_table_conf(table_key)
+        return self._parser.get_target_table_type(conf) or ""
+
+    def get_target_primary_key(self, table_key: str) -> dict:
+        conf = self.get_table_conf(table_key)
+        return self._parser.get_target_primary_key(conf) or {}
+
+    def get_target_foreign_keys(self, table_key: str) -> dict:
+        conf = self.get_table_conf(table_key)
+        return self._parser.get_target_foreign_keys(conf) or {}
+
+    def get_target_required_fields(self, table_key: str) -> list[str]:
+        conf = self.get_table_conf(table_key)
+        return self._parser.get_target_required_fields(conf) or []
+    
+    def get_target_source(self, table_key: str) -> list[str]:
+        conf = self.get_table_conf(table_key)
+        return self._parser.get_target_source(conf) or []
+
+    def get_dimension_columns(self, table_key: str) -> list[str]:
+        conf = self.get_table_conf(table_key)
+        return self._parser.get_target_columns(conf) or []
+
+    def get_join_config(self, table_key: str) -> list[dict]:
+        conf = self.get_table_conf(table_key)
+        return self._parser.get_join_config(conf) or []
+
+    def get_fact_join_config(self, table_key: str) -> list[dict]:
+        conf = self.get_table_conf(table_key)
+        return self._parser.get_fact_join_config(conf) or []
+
+    def get_aggregated_columns(self, table_key: str) -> list[dict]:
+        conf = self.get_table_conf(table_key)
+        columns_list  = self._parser.get_fact_aggregated_columns(conf) or []
+        return {col['name']: col['expression'] for col in columns_list}
+
+    # -------------------- File config wrappers --------------------
+    def get_workflow_files(self) -> dict:
+        if not hasattr(self, "_conf") or not self._conf:
+            return {}
+        return self._parser.get_workflow_files(self._conf) or {}
+
+    def get_file_name(self, file_key: str) -> str:
+        conf = self.get_file_conf(file_key)
+        return self._parser.get_file_name(conf) or ""
+
+    def get_file_required_fields(self, file_key: str) -> list[str]:
+        conf = self.get_file_conf(file_key)
+        return self._parser.get_file_required_fields(conf) or []
+
+    def get_file_type(self, file_key: str) -> list[str]:
+        conf = self.get_file_conf(file_key)
+        return self._parser.get_file_type(conf) or []
+
+    def get_pii_columns(self, file_key: str) -> list[str]:
+        conf = self.get_file_conf(file_key)
+        return self._parser.get_pii_columns(conf) or []
+
+    # -------------------- Batch / archive wrappers --------------------
+    def get_all_batch_conf(self) -> dict:
+        return self._conf or {}
+    
+    def get_batch_interval(self) -> str:
+        return self._parser.get_batch_interval(self._conf.get("batch", {})) or ""
+
+    def get_batch_path(self) -> str:
+        return self._parser.get_batch_path(self._conf.get("batch", {})) or ""
+
+    def get_microbatch_path(self) -> str:
+        return self._parser.get_microbatch_path(self._conf.get("batch", {})) or ""
+
+    def get_archive_dir(self) -> str:
+        return self._parser.get_archive_dir(self._conf.get("batch", {})) or ""
+
+    def get_archive_dir_batch(self) -> str:
+        return self._parser.get_archive_dir_batch(self._conf.get("batch", {})) or ""
+
+    def get_archive_dir_stream(self) -> str:
+        return self._parser.get_archive_dir_stream(self._conf.get("batch", {})) or ""

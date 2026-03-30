@@ -8,20 +8,6 @@ files:
     file_name: agents.csv
     file_type: dynamic
     model_class: Agent
-    file_columns:
-      - agent_id
-      - agent_name
-      - agent_email
-      - agent_phone 
-      - team_id
-      - skill_level
-      - hire_date
-      - avg_handle_time_min
-      - resolution_rate 
-      - csat_score
-      - is_active
-      - created_at
-      - updated_at
     required_fields:
       - agent_id
       - agent_name
@@ -36,9 +22,6 @@ files:
     file_name: teams.csv
     file_type: static
     model_class: Team
-    file_columns:
-      - team_id
-      - team_name
     required_fields:
       - team_id
       - team_name
@@ -47,17 +30,6 @@ files:
     file_name: customers.csv
     file_type: dynamic
     model_class: Customer
-    file_columns:
-      - customer_id
-      - full_name
-      - email
-      - phone
-      - signup_date
-      - gender
-      - region_id
-      - segment_id
-      - created_at
-      - updated_at 
     required_fields:
       - customer_id
       - full_name
@@ -71,11 +43,6 @@ files:
     file_name: segments.csv
     file_type: static
     model_class: Segment
-    file_columns:
-      - segment_id
-      - segment_name
-      - priority_support
-      - discount_pct
     required_fields:
       - segment_id
       - segment_name
@@ -86,11 +53,6 @@ files:
     file_name: cities.json
     file_type: static
     model_class: City
-    file_columns:
-      - city_id
-      - city_name
-      - country
-      - timezone
     required_fields:
       - city_id
       - city_name
@@ -101,11 +63,6 @@ files:
     file_name: regions.csv
     file_type: static
     model_class: Region
-    file_columns:
-      - region_id
-      - region_name
-      - city_id
-      - delivery_base_fee
     required_fields:
       - region_id
       - region_name
@@ -116,17 +73,6 @@ files:
     file_name: restaurants.json
     file_type: dynamic
     model_class: Restaurant
-    file_columns:
-      - restaurant_id
-      - restaurant_name
-      - region_id
-      - category_id
-      - price_tier
-      - rating_avg
-      - prep_time_avg_min
-      - is_active
-      - created_at
-      - updated_at
     required_fields:
       - restaurant_id
       - restaurant_name
@@ -136,9 +82,6 @@ files:
     file_name: categories.csv
     file_type: static
     model_class: Category
-    file_columns:
-      - category_id
-      - category_name
     required_fields:
       - category_id
       - category_name
@@ -147,9 +90,6 @@ files:
     file_name: channels.csv
     file_type: static
     model_class: Channel
-    file_columns:
-      - channel_id
-      - channel_name
     required_fields:
       - channel_id
       - channel_name
@@ -158,22 +98,6 @@ files:
     file_name: drivers.csv
     file_type: dynamic
     model_class: Driver
-    file_columns:
-      - driver_id
-      - driver_name
-      - driver_phone
-      - national_id
-      - region_id
-      - shift
-      - vehicle_type
-      - hire_date
-      - rating_avg
-      - on_time_rate
-      - cancel_rate
-      - completed_deliveries
-      - is_active
-      - created_at
-      - updated_at
     required_fields:
       - driver_id
       - driver_name
@@ -185,12 +109,6 @@ files:
     file_name: priorities.csv
     file_type: static
     model_class: Priority
-    file_columns:
-      - priority_id
-      - priority_code
-      - priority_name
-      - sla_first_response_min
-      - sla_resolution_min
     required_fields:
       - priority_id
       - priority_code
@@ -202,12 +120,6 @@ files:
     file_name: reasons.csv
     file_type: static
     model_class: Reason
-    file_columns:
-      - reason_id
-      - reason_name
-      - reason_category_id
-      - severity_level
-      - typical_refund_pct
     required_fields:
       - reason_id
       - reason_name
@@ -219,9 +131,6 @@ files:
     file_name: reason_categories.csv
     file_type: static
     model_class: ReasonCategory
-    file_columns:
-      - reason_category_id
-      - category_name
     required_fields:
       - reason_category_id
       - category_name
@@ -230,20 +139,6 @@ files:
     file_name: orders.json
     file_type: dynamic
     model_class: Order
-    file_columns:
-      - order_id
-      - customer_id
-      - restaurant_id
-      - driver_id
-      - region_id
-      - order_amount
-      - delivery_fee
-      - discount_amount
-      - total_amount
-      - order_status
-      - payment_method
-      - order_created_at
-      - delivered_at
     required_fields:
       - order_id
       - customer_id
@@ -261,23 +156,6 @@ files:
     file_name: tickets.csv
     file_type: dynamic
     model_class: Ticket
-    file_columns:
-      - ticket_id
-      - order_id
-      - customer_id
-      - driver_id
-      - restaurant_id
-      - agent_id
-      - reason_id
-      - priority_id
-      - channel_id
-      - status
-      - refund_amount
-      - created_at
-      - first_response_at
-      - resolved_at
-      - sla_first_due_at
-      - sla_resolve_due_at
     required_fields:
       - ticket_id
       - order_id
@@ -300,14 +178,6 @@ files:
     file_name: ticket_events.json
     file_type: dynamic
     model_class: TicketEvent
-    file_columns:
-      - event_id
-      - ticket_id
-      - agent_id
-      - event_ts
-      - old_status
-      - new_status
-      - notes
     required_fields:
       - event_id
       - ticket_id
