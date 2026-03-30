@@ -1,35 +1,41 @@
-"""
-SchemaValidator — Validator Strategy.
-Checks required columns exist and column types match the model.
-Hard failure: entire file is rejected if schema is wrong.
-"""
-from typing import Optional
+import dataclasses
 import pandas as pd
+from typing import Any
 from validation.validator import Validator
-
 
 class SchemaValidator(Validator):
 
-    def validate(
-        self,
-        df:         Optional[pd.DataFrame],
-        model,
-        table_conf: dict,
-    ) -> tuple[bool, list[str], Optional[pd.DataFrame]]:
+    def validate(self, df: pd.DataFrame, model: Any, required: list[str]) -> tuple[bool, list[dict[str, str]], pd.DataFrame , dict[str, int]]:
         if df is None:
-            return False, ["SchemaValidator: received None df"], None
+            return False, None, None
 
         errors = []
 
-        # Check required columns exist
-        required = table_conf.get("required_fields", [])
-        missing  = [col for col in required if col not in df.columns]
+        missing = [col for col in required if col not in df.columns]
         if missing:
-            errors.append(f"Missing required columns: {missing}")
+            errors.append({
+                    "model": model.__name__,
+                    "reason": f"has missing columns: {missing}"
+                })
+            return False, errors, df , {}
 
-        # TODO: check column types against model field definitions
+        for field in dataclasses.fields(model):
+            col_name = field.name.strip().lower()
+            expected_type = field.type
 
-        if errors:
-            return False, errors, df
+            if col_name not in df.columns:
+                continue
 
-        return True, [], df
+            unique_values = df[col_name].dropna().unique()
+            if len(unique_values) == 0:
+                continue
+
+            matched = any(self.validate_value(val, expected_type) for val in unique_values)
+
+            if not matched:
+                errors.append({
+                    "model": model.__name__,
+                    "reason": f"Column '{col_name}' type mismatch. Expected {expected_type.__name__}, got {df[col_name].dtype}"
+                })
+
+        return (False, errors, df, {}) if errors else (True, [], df, {})
