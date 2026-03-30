@@ -118,7 +118,7 @@ class ConfFileParser:
     def get_pii_columns(self, conf_section: dict) -> list[str]:
         if not conf_section:
             return []
-        return conf_section.get("pii_columns", [])
+        return conf_section.get("pii_fields", [])
 
 
     # ------------------------------------------------------------------
@@ -135,7 +135,6 @@ class ConfFileParser:
         if not batch_section:
             return ""
         return batch_section.get("batch_path", "")
-
 
     def get_microbatch_path(self, batch_section: dict) -> str:
         if not batch_section:

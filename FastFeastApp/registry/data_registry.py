@@ -290,10 +290,10 @@ class DataRegistry:
     # Config pass-through  (parser is always the source of truth)
     # ══════════════════════════════════════════════════════════════════
     def get_table_conf(self, table_key: str) -> dict:
-        return self._parser.get_table_conf(self._tables_conf, table_key)
+        return self._parser.get_table_conf(self._tables_conf, table_key) or {}
  
     def get_file_conf(self, file_key: str) -> dict:
-        return self._parser.get_file_conf(self._files_conf,file_key)
+        return self._parser.get_file_conf(self._files_conf,file_key) or {}
  
     # ══════════════════════════════════════════════════════════════════
     # DataFrame store  (shared between pipeline phases)
@@ -348,3 +348,98 @@ class DataRegistry:
             print("  (empty)")
  
         print("=" * 62)
+
+    # ────────────── ConfFileParser Wrappers in DataRegistry ──────────────
+
+    # -------------------- Table config wrappers --------------------
+    def get_all_tables_conf(self) -> dict:
+        return self._parser.get_all_tables_conf(self._conf) or {}
+
+    def get_target_table_name(self, table_key: str) -> str:
+        conf = self.get_table_conf(table_key)
+        return self._parser.get_target_table_name(conf) or ""
+
+    def get_target_table_type(self, table_key: str) -> str:
+        conf = self.get_table_conf(table_key)
+        return self._parser.get_target_table_type(conf) or ""
+
+    def get_target_primary_key(self, table_key: str) -> dict:
+        conf = self.get_table_conf(table_key)
+        return self._parser.get_target_primary_key(conf) or {}
+
+    def get_target_foreign_keys(self, table_key: str) -> dict:
+        conf = self.get_table_conf(table_key)
+        return self._parser.get_target_foreign_keys(conf) or {}
+
+    def get_target_required_fields(self, table_key: str) -> list[str]:
+        conf = self.get_table_conf(table_key)
+        return self._parser.get_target_required_fields(conf) or []
+    
+    def get_target_source(self, table_key: str) -> list[str]:
+        conf = self.get_table_conf(table_key)
+        return self._parser.get_target_source(conf) or []
+
+    def get_dimension_columns(self, table_key: str) -> list[str]:
+        conf = self.get_table_conf(table_key)
+        return self._parser.get_target_columns(conf) or []
+
+    def get_join_config(self, table_key: str) -> list[dict]:
+        conf = self.get_table_conf(table_key)
+        return self._parser.get_join_config(conf) or []
+
+    def get_fact_join_config(self, table_key: str) -> list[dict]:
+        conf = self.get_table_conf(table_key)
+        return self._parser.get_fact_join_config(conf) or []
+
+    def get_aggregated_columns(self, table_key: str) -> list[dict]:
+        conf = self.get_table_conf(table_key)
+        columns_list  = self._parser.get_fact_aggregated_columns(conf) or []
+        return {col['name']: col['expression'] for col in columns_list}
+
+    # -------------------- File config wrappers --------------------
+    def get_workflow_files(self) -> dict:
+        if not hasattr(self, "_conf") or not self._conf:
+            return {}
+        return self._parser.get_workflow_files(self._conf) or {}
+
+    def get_file_name(self, file_key: str) -> str:
+        conf = self.get_file_conf(file_key)
+        return self._parser.get_file_name(conf) or ""
+
+    def get_file_required_fields(self, file_key: str) -> list[str]:
+        conf = self.get_file_conf(file_key)
+        return self._parser.get_file_required_fields(conf) or []
+
+    def get_file_type(self, file_key: str) -> list[str]:
+        conf = self.get_file_conf(file_key)
+        return self._parser.get_file_type(conf) or []
+
+    def get_file_columns(self, file_key: str) -> list[str]:
+        conf = self.get_file_conf(file_key)
+        return self._parser.get_file_columns(conf) or []
+
+    def get_pii_columns(self, file_key: str) -> list[str]:
+        conf = self.get_file_conf(file_key)
+        return self._parser.get_pii_columns(conf) or []
+
+    # -------------------- Batch / archive wrappers --------------------
+    def get_all_batch_conf(self) -> dict:
+        return self._conf or {}
+    
+    def get_batch_interval(self) -> str:
+        return self._parser.get_batch_interval(self._conf.get("batch", {})) or ""
+
+    def get_batch_path(self) -> str:
+        return self._parser.get_batch_path(self._conf.get("batch", {})) or ""
+
+    def get_microbatch_path(self) -> str:
+        return self._parser.get_microbatch_path(self._conf.get("batch", {})) or ""
+
+    def get_archive_dir(self) -> str:
+        return self._parser.get_archive_dir(self._conf.get("batch", {})) or ""
+
+    def get_archive_dir_batch(self) -> str:
+        return self._parser.get_archive_dir_batch(self._conf.get("batch", {})) or ""
+
+    def get_archive_dir_stream(self) -> str:
+        return self._parser.get_archive_dir_stream(self._conf.get("batch", {})) or ""
