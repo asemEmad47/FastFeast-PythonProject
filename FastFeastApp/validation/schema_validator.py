@@ -5,13 +5,12 @@ from validation.validator import Validator
 
 class SchemaValidator(Validator):
 
-    def validate(self, df: pd.DataFrame, model: Any, table_conf: dict) -> tuple[bool, list[dict[str, str]], pd.DataFrame]:
+    def validate(self, df: pd.DataFrame, model: Any, required: list[str]) -> tuple[bool, list[dict[str, str]], pd.DataFrame]:
         if df is None:
             return False, None, None
 
         errors = []
 
-        required = table_conf.get("required_fields", [])
         missing = [col for col in required if col not in df.columns]
         if missing:
             errors.append({

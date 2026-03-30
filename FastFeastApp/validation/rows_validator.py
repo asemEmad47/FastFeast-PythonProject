@@ -6,12 +6,12 @@ from validation.validator import Validator
 
 class RowsValidator(Validator):
 
-    def validate(self, df, model, table_conf: dict) -> tuple[bool, list[dict[str, str]], pd.DataFrame]:
+    def validate(self, df, model, required) -> tuple[bool, list[dict[str, str]], pd.DataFrame]:
         if df is None:
             return True, [], pd.DataFrame()
 
         errors = []
-        required = table_conf.get("required_fields", [])
+
         bad_rows = df[df[required].isnull().any(axis=1)]
         clean_rows = df.drop(bad_rows.index)
 

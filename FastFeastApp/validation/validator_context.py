@@ -13,7 +13,7 @@ class ValidatorContext:
     def get_validator(self) -> Validator:
         return self._validator
 
-    def validate(self, df, model, table_conf: dict) -> tuple[bool,  list[dict[str, str]], pd.DataFrame]:
+    def validate(self, df, model, required: list[str]) -> tuple[bool,  list[dict[str, str]], pd.DataFrame]:
         if self._validator is None:
             raise RuntimeError("ValidatorContext: no validator set")
-        return self._validator.validate(df, model, table_conf)
+        return self._validator.validate(df, model, required)
