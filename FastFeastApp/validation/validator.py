@@ -9,7 +9,7 @@ import numpy as np
 class Validator(ABC):
 
     @abstractmethod
-    def validate(self, df, model, required) -> tuple[bool,  list[dict[str, str]], pd.DataFrame]:
+    def validate(self, df, model, required: list[str]) -> tuple[bool,  list[dict[str, str]], pd.DataFrame , dict[str, int]]:
         ...
 
     def validate_value(self, value: any, expected_type: type) -> bool:

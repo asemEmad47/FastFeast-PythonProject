@@ -5,7 +5,7 @@ from validation.validator import Validator
 
 class SchemaValidator(Validator):
 
-    def validate(self, df: pd.DataFrame, model: Any, required: list[str]) -> tuple[bool, list[dict[str, str]], pd.DataFrame]:
+    def validate(self, df: pd.DataFrame, model: Any, required: list[str]) -> tuple[bool, list[dict[str, str]], pd.DataFrame , dict[str, int]]:
         if df is None:
             return False, None, None
 
@@ -17,7 +17,7 @@ class SchemaValidator(Validator):
                     "model": model.__name__,
                     "reason": f"has missing columns: {missing}"
                 })
-            return False, errors, df
+            return False, errors, df , {}
 
         for field in dataclasses.fields(model):
             col_name = field.name.strip().lower()
@@ -38,4 +38,4 @@ class SchemaValidator(Validator):
                     "reason": f"Column '{col_name}' type mismatch. Expected {expected_type.__name__}, got {df[col_name].dtype}"
                 })
 
-        return (False, errors, df) if errors else (True, [], df)
+        return (False, errors, df, {}) if errors else (True, [], df, {})

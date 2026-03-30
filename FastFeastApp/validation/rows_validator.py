@@ -6,12 +6,19 @@ from validation.validator import Validator
 
 class RowsValidator(Validator):
 
-    def validate(self, df, model, required) -> tuple[bool, list[dict[str, str]], pd.DataFrame]:
+    def validate(self, df, model, required) -> tuple[bool, list[dict[str, str]], pd.DataFrame , dict[str, int]]:
         if df is None:
-            return True, [], pd.DataFrame()
+            return True, [], pd.DataFrame(), {}
+        
+        stats = {
+            "total_rows": len(df),
+            "passed_count": len(df),
+            "null_count": 0,
+            "quarantined_count": 0
+        }
 
         errors = []
-
+        
         bad_rows = df[df[required].isnull().any(axis=1)]
         clean_rows = df.drop(bad_rows.index)
 
@@ -21,6 +28,8 @@ class RowsValidator(Validator):
                     "row" : row.to_string(),
                     "reason": f"Missing required fields: {[col for col in required if pd.isnull(row[col])]}"
                 })
+                stats["null_count"] += 1
+                stats["passed_count"] -= 1
                 
         for field in dataclasses.fields(model):
             col_name      = field.name.strip().lower()
@@ -36,6 +45,8 @@ class RowsValidator(Validator):
                         "row": clean_rows.loc[idx].to_string(),
                         "reason": f"Column '{col_name}' type mismatch. Expected {expected_type.__name__}, got {type(val).__name__}"
                     })
+                    stats["quarantined_count"] += 1
+                    stats["passed_count"] -= 1
                     clean_rows = clean_rows.drop(idx)
 
-        return True, errors, clean_rows
+        return True, errors, clean_rows , stats
