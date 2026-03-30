@@ -1,6 +1,3 @@
-"""
-FastFeast ETL Pipeline — Entry Point
-"""
 from app.app_manager import AppManager
 
 def main() -> None:

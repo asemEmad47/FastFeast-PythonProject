@@ -1,54 +1,38 @@
-"""
-AppManager — Top-level facade.
-
-1. Delegates object creation to VariablesInitializer.
-2. Wires WorkFlow with all dependencies.
-3. Starts Batch and MicroBatch on separate daemon threads.
-"""
+import time
 import threading
 from app.variables_initializer import VariablesInitializer
-from batch.batch import Batch
-from batch.micro_batch import MicroBatch
-from etl.workflow import WorkFlow
-from audit.email_task import EmailTask
-
 
 class AppManager:
 
-    def __init__(self) -> None:
-        self._initializer  = VariablesInitializer()
-        self._batch:       Batch      = None
-        self._micro_batch: MicroBatch = None
+    def __init__(self):
+        self._initializer = VariablesInitializer()
 
-    # ------------------------------------------------------------------
-    def initialize(self) -> None:
+    def initialize(self):
         self._initializer.initialize_variables()
 
-        registry     = self._initializer.registry
-        parser       = self._initializer.parser
-        file_tracker = self._initializer.file_tracker
-        audit        = self._initializer.audit
+    def start(self):
+        init = self._initializer
 
-        workflow = WorkFlow()
-        workflow.registry     = registry
-        workflow.parser       = parser
-        workflow.audit        = audit
-        workflow.alerter      = EmailTask()
-        workflow.file_tracker = file_tracker
+        t_batch = threading.Thread(
+            target=self._batch_loop,
+            args=(init.batch, init.batch_interval),
+            name="BatchThread",
+            daemon=True, # To kill thread if the programm closes
+        )
+        t_micro = threading.Thread(
+            target=init.micro_batch.run,
+            name="MicroBatchThread",
+            daemon=True,
+        )
 
-        self._batch = Batch()
-        self._batch.workflow      = workflow
-        self._batch.file_tracker  = file_tracker
+        t_batch.start()
+        t_micro.start()
+        t_batch.join() # To keep main thread alive while this thread is running
+        t_micro.join() 
 
-        self._micro_batch = MicroBatch()
-        self._micro_batch.workflow     = workflow
-        self._micro_batch.file_tracker = file_tracker
-
-    # ------------------------------------------------------------------
-    def start(self) -> None:
-        t1 = threading.Thread(target=self._batch.run,       name="BatchThread",      daemon=True)
-        t2 = threading.Thread(target=self._micro_batch.run, name="MicroBatchThread", daemon=True)
-        t1.start()
-        t2.start()
-        t1.join()
-        t2.join()
+    def _batch_loop(self, batch, interval: int):
+        while True:
+            print("Running batch process...")
+            batch.run()
+            time.sleep(interval)
+            

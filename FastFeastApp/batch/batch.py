@@ -1,30 +1,29 @@
-"""
-Batch — Daily full-load thread.
-Scans batch source folder, skips already-processed files, runs WorkFlow.
-"""
-import os
-from config.settings import BATCH_SOURCE_DIR
+from audit.email_task import EmailTask
+from batch.batch_reader import BatchReader
 from etl.workflow import WorkFlow
+from audit.audit import Audit
+from registry.conf_file_parser import ConfFileParser
+from registry.data_registry import DataRegistry
 from utils.file_tracker import FileTracker
 
 
-class Batch:
+class Batch(BatchReader):
 
-    def __init__(self) -> None:
-        self.workflow:     WorkFlow    = None
-        self.file_tracker: FileTracker = None
+    def __init__(self, work_flow: WorkFlow, audit: Audit, file_tracker: FileTracker , registry: DataRegistry, parser: ConfFileParser, alerter: EmailTask , source_path: str):
+        super().__init__(work_flow=work_flow, audit=audit, file_tracker=file_tracker, registry=registry, parser=parser, alerter=alerter, source_path=source_path)
 
     def run(self) -> None:
-        files = self._get_files()
+        files = self.file_tracker.get_unprocessed_files(self.source_path)
         if not files:
+            print("No new files to process.")
             return
-        self.workflow.files = files
-        self.workflow.orchestrate()
-
-    def _get_files(self) -> list[str]:
-        all_files = [
-            os.path.join(BATCH_SOURCE_DIR, f)
-            for f in os.listdir(BATCH_SOURCE_DIR)
-            if os.path.isfile(os.path.join(BATCH_SOURCE_DIR, f))
-        ]
-        return [f for f in all_files if not self.file_tracker.is_processed(f)]
+        self.work_flow.files = files
+        try:
+            # self.work_flow.orchestrate() --> will uncomment this line when the workflow is implemented
+            for f in files:
+                self.file_tracker.mark_processed(f)
+            self.file_tracker.move_files_to_archive(self.source_path, False)
+            print("Batch processing completed.")
+        except Exception as e:
+            print(f"Error processing batch: {e}")
+            raise
