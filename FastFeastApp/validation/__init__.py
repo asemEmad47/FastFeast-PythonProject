@@ -3,6 +3,7 @@ from validation.schema_validator import SchemaValidator
 from validation.rows_validator import RowsValidator
 from validation.validator_context import ValidatorContext
 import pandas as pd
+import json
 
 # corrupted data
 corrupted_df = pd.DataFrame({
@@ -22,35 +23,49 @@ corrupted_df = pd.DataFrame({
     "valid_to":      pd.to_datetime([None, None, "2023-01-01", None, "2023-05-01"]),
 })
 
-table_conf = {
-    "required_fields": ["customer_id", "full_name", "email", "segment_id", "signup_date", "gender"]
-}
+# Extract the list directly as required by your new signature
+required_fields = ["customer_id", "full_name", "email", "segment_id", "signup_date", "gender"]
 
-validator = ValidatorContext()
+validator_ctx = ValidatorContext()
 schema_validator = SchemaValidator()
 rows_validator = RowsValidator()
 
+# --- TEST 1: Schema Validation ---
+validator_ctx.set_validator(schema_validator)
+print("=" * 40)
+print("TEST 1 — Schema Validation")
+print("=" * 40)
 
-validator.set_validator(schema_validator)
+# Unpacking 4 values now: ok, errors, df, stats
+ok, errors, df_out, stats = validator_ctx.validate(corrupted_df, Customer, required_fields)
 
-print("=" * 40)
-print("TEST 1 — clean data")
-print("=" * 40)
-ok, errors, df = validator.validate(corrupted_df, Customer, table_conf)
-print(f"Valid: {ok}")
-for e in errors:
-    print(f"  ❌ {e}")
-if ok:
-    print("  ✅ all columns passed")
+print(f"Schema Valid: {ok}")
+if errors:
+    for e in errors:
+        print(f"  ❌ {e['reason']}")
+else:
+    print("  ✅ Schema matches model")
 
-validator.set_validator(rows_validator)
-print()
+# --- TEST 2: Row Validation ---
+validator_ctx.set_validator(rows_validator)
+print("\n" + "=" * 40)
+print("TEST 2 — Row Data Validation & Stats")
 print("=" * 40)
-print("TEST 2 — corrupted data")
-print("=" * 40)
-ok, errors, df = validator.validate(corrupted_df, Customer, table_conf)
-print(f"Valid: {ok}")
-for e in errors:
-    print(f"Row    : {e.get('row', e.get('model', 'N/A'))}")
-    print(f"Reason : {e.get('reason')}")
-    print("=" * 40)
+
+ok, errors, clean_df, stats = validator_ctx.validate(corrupted_df, Customer, required_fields)
+
+print(f"Row Validation Complete. Status: {'Success' if ok else 'Failed'}")
+print("-" * 20)
+print("PROCESSING STATS:")
+print(json.dumps(stats, indent=4))
+print("-" * 20)
+
+if errors:
+    print(f"Found {len(errors)} validation errors:")
+    for e in errors:
+        # Using .get() for safety since row/model keys differ between validators
+        print(f"Target : {e.get('row', e.get('model', 'N/A'))[:50]}...") 
+        print(f"Reason : {e.get('reason')}")
+        print("-" * 40)
+
+print(f"\nFinal Clean DataFrame Row Count: {len(clean_df)}")
