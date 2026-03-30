@@ -3,7 +3,7 @@ Test AgentsRepository — CRUD + upsert operations.
 Uses a custom pandas DataFrame as the data source
 to simulate what the ETL layer will eventually supply.
 Run from FastFeastApp/ directory:
-    python -m tests.agents_repository_test
+    python -m tests.repo_test
 """
 from __future__ import annotations
 import pandas as pd
