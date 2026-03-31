@@ -387,14 +387,13 @@ class DataRegistry:
         conf = self.get_table_conf(table_key)
         return self._parser.get_join_config(conf) or []
 
-    def get_fact_join_config(self, table_key: str) -> list[dict]:
+    def get_fact_dimension_sources(self, table_key: str) -> list[dict]:
         conf = self.get_table_conf(table_key)
-        return self._parser.get_fact_join_config(conf) or []
+        return self._parser.get_fact_dimension_sources(conf) or []
 
     def get_aggregated_columns(self, table_key: str) -> list[dict]:
         conf = self.get_table_conf(table_key)
-        columns_list  = self._parser.get_fact_aggregated_columns(conf) or []
-        return {col['name']: col['expression'] for col in columns_list}
+        return self._parser.get_fact_aggregated_columns(conf) or []
 
     # -------------------- File config wrappers --------------------
     def get_workflow_files(self) -> dict:

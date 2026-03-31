@@ -62,19 +62,59 @@ class ConfFileParser:
         return conf_section.get("keep_columns",[])
     
     def get_join_config(self, conf_section: dict) -> list[dict]:
-        if not conf_section:
-            return []
-        return conf_section.get("joins", [])
+        joins = conf_section.get("joins") or []
+
+        structured_joins = []
+
+        for join in joins:
+            left = join.get("left", "")
+            right = join.get("right", [])
+            join_type = join.get("type", "inner")
+
+            left_table, left_column = left.split(".")
+
+            if isinstance(right, str):
+                right = [right]
+
+            right_structured = []
+            for r in right:
+                table, column = r.split(".")
+                right_structured.append({
+                    "table": table,
+                    "column": column
+                })
+
+            structured_joins.append({
+                "left_table": left_table,
+                "left_column": left_column,
+                "right": right_structured,
+                "type": join_type
+            })
+
+        return structured_joins
     
-    def get_fact_join_config(self, conf_section: dict) -> list[dict]:
-        if not conf_section:
-            return []
+    def get_fact_dimension_sources(self, conf_section: dict) -> list[dict]:
         return conf_section.get("dimension_sources", [])
     
     def get_fact_aggregated_columns(self, conf_section: dict) -> list[dict]:
-        if not conf_section:
-            return []
-        return conf_section.get("aggregated_columns", [])
+        components =  conf_section.get("aggregated_columns", []) or []
+
+        result = []
+
+        for comp in components:
+            component_name = comp.get("component")
+            actions = comp.get("actions", [])
+
+            for action in actions:
+                result.append({
+                    "component": component_name,
+                    "name": action.get("name"),
+                    "type": action.get("type"),
+                    "params": action.get("params", {})
+                })
+
+        return result
+
 
     # ------------------------------------------------------------------
     # File config getters

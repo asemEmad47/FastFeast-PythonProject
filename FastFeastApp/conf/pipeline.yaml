@@ -194,7 +194,7 @@ tables:
     source: [agents, teams]
     joins:
       - left: agents.team_id
-        right: teams.team_id
+        right: [teams.team_id]
         type: left
     target_table: AgentsDim
     table_type: dynamic_dimension
@@ -226,7 +226,7 @@ tables:
     source: [customers, segments]
     joins:
       - left: customers.segment_id
-        right: segments.segment_id
+        right: [segments.segment_id]
         type: left
     target_table: CustomersDim
     table_type: dynamic_dimension
@@ -274,7 +274,7 @@ tables:
     target_table: RestaurantsDim
     joins:
       - left: restaurants.category_id
-        right: categories.category_id
+        right: [categories.category_id]
         type: left
     table_type: dynamic_dimension
     repository: RestaurantRepository
@@ -392,7 +392,7 @@ tables:
     source: [reasons,reason_categories]
     joins:
       - left: reasons.reason_category_id
-        right: reason_categories.reason_category_id
+        right: [reason_categories.reason_category_id]
         type: left
 
     target_table: ReasonsDim
@@ -418,11 +418,8 @@ tables:
     source: [tickets,orders]
     joins:
       - left: tickets.order_id
-        right: orders.order_id
+        right: [orders.order_id, ticket_events.ticket_id]
         type: left
-
-    event_sources:
-    - ticket_events
 
     dimension_sources:
       - dim: CustomersDim
@@ -486,13 +483,20 @@ tables:
       - Status
 
     aggregated_columns:
-      - name: resolution_time_min
-        expression: "resolved_at - created_at"
-      - name: first_response_time_min
-        expression: "first_response_at - created_at"
-      - name: sla_first_response_breached
-        expression: "first_response_time_min > sla_first_due_at"
-      - name: sla_resolution_breached
-        expression: "resolution_time_min > sla_resolve_due_at"
-      - name: revenue_impact
-        expression: "refund_amount + discount_amount"
+    - component: Transformer
+      actions:
+        - name: resolution_time_min
+          type: date_diff
+          params: { end: "resolved_at", start: "created_at", unit: "m" }
+        - name: first_response_time_min
+          type: date_diff
+          params: { end: "first_response_at", start: "created_at", unit: "m" }
+        - name: sla_first_response_breached
+          type: comparison
+          params: { left: "first_response_time_min", op: "<", right: "sla_first_due_at" }
+        - name: sla_resolution_breached
+          type: comparison
+          params: { left: "resolution_min", op: "<", right: "sla_resolve_due_at" }
+        - name: revenue_impact
+          type: summation
+          params: { left: "refund_amount" , op: "+", right: " discount_amount" }

@@ -20,27 +20,27 @@ registry = DataRegistry(parser)
 # -----------------------------
 registry.load_config(pipeline_file)
 
-# print("\n=== Table Config Getters ===")
+print("\n=== Table Config Getters ===")
 
-# all_tables_conf = registry.get_all_tables_conf()
-# print("All tables:", list(all_tables_conf.keys()))
+all_tables_conf = registry.get_all_tables_conf()
+print("All tables:", list(all_tables_conf.keys()))
 
-# for table_key in all_tables_conf:
-#     table_conf = registry.get_table_conf(table_key)
+for table_key in all_tables_conf:
+    table_conf = registry.get_table_conf(table_key)
 
-#     print(f"\nTable: {table_key}")
-#     print("Table Configuration:", table_conf)
+    print(f"\nTable: {table_key}")
+    # print("Table Configuration:", table_conf)
 
-#     print("Target table name:", registry.get_target_table_name(table_key))
-#     print("Target table type:", registry.get_target_table_type(table_key))
-#     print("Primary key:", registry.get_target_primary_key(table_key))
-#     print("Foreign keys:", registry.get_target_foreign_keys(table_key))
-#     print("Required fields:", registry.get_target_required_fields(table_key))
-#     print("Source tables:", registry.get_target_source(table_key))
-#     print("Joins:", registry.get_join_config(table_key))
-#     print("Keep columns:", registry.get_dimension_columns(table_key))
-#     print("Fact dimension joins:", registry.get_fact_join_config(table_key))
-#     print("Fact aggregated columns:", registry.get_aggregated_columns(table_key))
+    # print("Target table name:", registry.get_target_table_name(table_key))
+    # print("Target table type:", registry.get_target_table_type(table_key))
+    # print("Primary key:", registry.get_target_primary_key(table_key))
+    # print("Foreign keys:", registry.get_target_foreign_keys(table_key))
+    # print("Required fields:", registry.get_target_required_fields(table_key))
+    # print("Source tables:", registry.get_target_source(table_key))
+    print("Joins:", registry.get_join_config(table_key))
+    # print("Keep columns:", registry.get_dimension_columns(table_key))
+    print("Fact dimension joins:", registry.get_fact_dimension_sources(table_key))
+    print("Fact aggregated columns:", registry.get_aggregated_columns(table_key))
 
 # -----------------------------
 # File Config Getters
