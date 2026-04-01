@@ -362,10 +362,14 @@ class DataRegistry:
     def get_target_table_type(self, table_key: str) -> str:
         conf = self.get_table_conf(table_key)
         return self._parser.get_target_table_type(conf) or ""
+    
+    def get_target_schema(self, table_key: str) -> str:
+        conf = self.get_table_conf(table_key)
+        return self._parser.get_target_schema(conf) or ""
 
     def get_target_primary_key(self, table_key: str) -> dict:
         conf = self.get_table_conf(table_key)
-        return self._parser.get_target_primary_key(conf) or {}
+        return self._parser.get_target_primary_key(conf) or ""
 
     def get_target_foreign_keys(self, table_key: str) -> dict:
         conf = self.get_table_conf(table_key)
