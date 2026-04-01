@@ -67,28 +67,27 @@ class ConfFileParser:
         structured_joins = []
 
         for join in joins:
-            left = join.get("left", "")
-            right = join.get("right", [])
-            join_type = join.get("type", "inner")
-
-            left_table, left_column = left.split(".")
+            left_table  = join.get("left", "")
+            right       = join.get("right", [])
+            left_keys   = join.get("left_keys", [])
+            right_keys  = join.get("right_keys", [])
+            join_type   = join.get("type", "inner")
 
             if isinstance(right, str):
                 right = [right]
 
-            right_structured = []
-            for r in right:
-                table, column = r.split(".")
-                right_structured.append({
-                    "table": table,
-                    "column": column
+            rights = []
+            for i, right_table in enumerate(right):
+                rights.append({
+                    "table":      right_table,
+                    "left_key":   left_keys[i],
+                    "right_key":  right_keys[i]
                 })
 
             structured_joins.append({
                 "left_table": left_table,
-                "left_column": left_column,
-                "right": right_structured,
-                "type": join_type
+                "right":      rights,
+                "type":       join_type
             })
 
         return structured_joins
