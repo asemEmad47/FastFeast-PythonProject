@@ -1,8 +1,8 @@
-"""
+"""""
 DataFlowTask — Runs three sequential stages for one DWH table.
 
 Attributes (per UML):
-  data_framse_dicts : List[dict]               — one dict per source file
+  dataframe_dicts : List[dict]               — one dict per source file
   audit             : Audit
   registry          : DataRegistry
   before_join_components : List[DataFlowComponent]
@@ -16,9 +16,9 @@ metrics_dict is created once and passed by reference through every component.
 
 Stage 1 — before_join: process each source file independently.
           Each source runs its own Read → Validate → PIIMask chain.
-          Results stored back in data_framse_dicts.
+          Results stored back in dataframe_dicts.
 
-Stage 2 — join: merge all source dfs using data_framse_dicts.
+Stage 2 — join: merge all source dfs using dataframe_dicts.
           Primary source dict flows as the left side.
 
 Stage 3 — after_join: Transformer → Orphans → Dedup → SCD → LoadToTarget.
@@ -27,117 +27,86 @@ Stage 3 — after_join: Transformer → Orphans → Dedup → SCD → LoadToTarg
 from __future__ import annotations
 from typing import Optional
 import pandas as pd
-from etl.task import Task
-from audit.audit import Audit
-from registry.data_registry import DataRegistry
-from etl.components.data_flow_component import DataFlowComponent
 
-
-class DataFlowTask(Task):
+class DataFlowTask():
 
     def __init__(
         self,
-        audit:                   Audit,
-        registry:                DataRegistry,
-        data_framse_dicts:       list[dict]            = None,
-        before_join_components:  list[list[DataFlowComponent]] = None,
-        join_task                                       = None,
-        after_join_components:   list[DataFlowComponent] = None,
-    ) -> None:
-        self.audit                   = audit
-        self.registry                = registry
-        self.data_framse_dicts       = data_framse_dicts      or []
-        self.before_join_components  = before_join_components or []  # list of lists (one per source)
-        self.join_task               = join_task
-        self.after_join_components   = after_join_components  or []
+        audit ,
+        registry,
+        before_join_components = None,
+        join_task = None,
+        after_join_components = None,
+    ) :
+        self.audit = audit
+        self.registry = registry
+        self.before_join_components = before_join_components or {}
+        self.join_task = join_task
+        self.after_join_components = after_join_components or []
 
     # ══════════════════════════════════════════════════════════════════
     # PUBLIC — called by WorkFlow.orchestrate()
     # ══════════════════════════════════════════════════════════════════
 
-    def do_task(self) -> tuple[bool, list[str]]:
+    def do_task(self, dataframe_dicts) -> tuple[bool, list[str]]:
         all_errors: list[str] = []
 
-        # ── Stage 1: before-join — per source file ──────────────────
-        for i, component_chain in enumerate(self.before_join_components):
-            if i >= len(self.data_framse_dicts):
-                break
+        # ── Stage 1: before-join ──────────────────
+        for i, data_dict in enumerate(dataframe_dicts):
+            source = data_dict.get("source")
 
-            data_frame_dict = self.data_framse_dicts[i]
-            metrics_dict    = DataFlowComponent.make_metrics()
-            bad_rows        = None
+            if not source:
+                self.audit.log_failure("Missing source")
+                continue
 
-            for component in component_chain:
-                ok, errors, data_frame_dict, metrics_dict, bad_rows = component.do_task(
-                    data_frame_dict, metrics_dict, bad_rows
-                )
+            chain = self.before_join_components.get(source, [])
+
+            if not chain:
+                self.audit.log_failure(f"No components for {source}")
+                continue
+
+            for comp in chain:
+                ok, errors, data_dict, metrics, bad_rows = comp.do_task(data_dict)
                 all_errors.extend(errors)
-                if not ok:
-                    self.audit.log_failure(
-                        f"Before-join failed [{data_frame_dict.get('source')}]: {errors}"
-                    )
-                    break   # stop this source's chain, continue to next source
 
-            # Store metrics per source
-            self.audit.track_metrics(
-                data_frame_dict.get("source", f"source_{i}"), metrics_dict
-            )
-            # Write back updated dict
-            self.data_framse_dicts[i] = data_frame_dict
+                if not ok:
+                    self.audit.log_failure(f"Before-join failed [{source}]")
+                    break
+
+            dataframe_dicts[i] = data_dict
+            self.audit.track_metrics(source, metrics)
 
         # ── Stage 2: join ────────────────────────────────────────────
-        if self.join_task is not None:
-            self.join_task.set_data_framse_dict(self.data_framse_dicts)
+        if self.join_task and dataframe_dicts:
 
-            # Primary source is always the first dict
-            primary_dict = self.data_framse_dicts[0] if self.data_framse_dicts else {}
-            metrics_dict = DataFlowComponent.make_metrics()
-            bad_rows     = None
-
-            ok, errors, primary_dict, metrics_dict, bad_rows = self.join_task.do_task(
-                primary_dict, metrics_dict, bad_rows
-            )
+            ok, errors, result_dicts, metrics, bad_rows = self.join_task.do_task(dataframe_dicts)
             all_errors.extend(errors)
+
             if not ok:
-                self.audit.log_failure(f"Join stage failed: {errors}")
+                self.audit.log_failure(f"Join failed: {errors}")
                 return False, all_errors
 
-            # Put merged result as the single dict for after_join
-            self.data_framse_dicts[0] = primary_dict
+            # replace with joined result(s)
+            dataframe_dicts = result_dicts
 
-        # ── Stage 3: after-join ───────────────────────────────────────
-        working_dict = self.data_framse_dicts[0] if self.data_framse_dicts else {}
-        metrics_dict = DataFlowComponent.make_metrics()
-        bad_rows     = None
+       # ── Stage 3: after-join ───────────────────────────────────────
+        if not dataframe_dicts:
+            return True, all_errors
 
-        after_components      = self.after_join_components
-        load_target_component = None
+        for i, data_dict in enumerate(dataframe_dicts):
+            dimension = data_dict["dimension"]
 
-        # Separate LoadToTarget (last step — different return signature per UML)
-        from etl.components.load_to_target import LoadToTarget
-        if after_components and isinstance(after_components[-1], LoadToTarget):
-            load_target_component = after_components[-1]
-            after_components      = after_components[:-1]
+            working = data_dict
 
-        for component in after_components:
-            ok, errors, working_dict, metrics_dict, bad_rows = component.do_task(
-                working_dict, metrics_dict, bad_rows
-            )
-            all_errors.extend(errors)
-            if not ok:
-                self.audit.log_failure(f"After-join failed: {errors}")
-                return False, all_errors
+            for comp in self.after_join_components:
+                ok, errors, working, metrics, bad_rows = comp.do_task(working)
+                all_errors.extend(errors)
 
-        # LoadToTarget — terminal component, short return signature
-        if load_target_component is not None:
-            ok, errors, _ = load_target_component.do_task(
-                working_dict, metrics_dict, bad_rows
-            )
-            all_errors.extend(errors)
-            if not ok:
-                return False, all_errors
+                if not ok:
+                    self.audit.log_failure(f"After-join failed [{dimension}]")
+                    return False, all_errors
 
-        self.audit.track_metrics(
-            working_dict.get("dimension", "unknown"), metrics_dict
-        )
+            dataframe_dicts[i] = working
+            self.audit.track_metrics(dimension, metrics)
+
         return True, all_errors
