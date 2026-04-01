@@ -8,11 +8,8 @@ from db.database_manager import DatabaseManager
 
 class RestaurantsRepository(BaseRepository):
 
-    __table__  = "DimRestaurants"
-    __pk__     = "restaurant_id"
-
-    def __init__(self, db_manager: DatabaseManager) -> None:
-        super().__init__(db_manager)
+    def __init__(self, db_manager, registry, audit=None):
+        super().__init__(db_manager, registry, "RestaurantsDim", audit=audit)
 
     # ── CRUD ──────────────────────────────────────────────────────────────
 

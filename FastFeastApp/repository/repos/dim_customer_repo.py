@@ -8,12 +8,8 @@ from db.database_manager import DatabaseManager
 
 class CustomersRepository(BaseRepository):
 
-    __table__  = "DimCustomers"
-    __pk__     = "customer_id"
-
-    def __init__(self, db_manager: DatabaseManager) -> None:
-        super().__init__(db_manager)
-
+    def __init__(self, db_manager, registry, audit=None):
+        super().__init__(db_manager, registry, "CustomersDim", audit=audit)
     # ── CRUD ──────────────────────────────────────────────────────────────
 
     def get_customer_by_id(self, customer_id: int) -> dict | None:

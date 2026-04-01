@@ -8,11 +8,8 @@ from db.database_manager import DatabaseManager
 
 class AgentsRepository(BaseRepository):
 
-    __table__  = "DimAgents"
-    __pk__     = "agent_id"
-
-    def __init__(self, db_manager: DatabaseManager) -> None:
-        super().__init__(db_manager)
+    def __init__(self, db_manager: DatabaseManager, registry, audit=None) -> None:
+        super().__init__(db_manager, registry, "AgentsDim", audit=audit)
 
     # ── CRUD ──────────────────────────────────────────────────────────────
 

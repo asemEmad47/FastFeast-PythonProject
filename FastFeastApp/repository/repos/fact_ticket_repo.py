@@ -8,11 +8,8 @@ from db.database_manager import DatabaseManager
 
 class FactTicketsRepository(BaseRepository):
 
-    __table__  = "FactTickets"
-    __pk__     = "ticket_id"
-
-    def __init__(self, db_manager: DatabaseManager) -> None:
-        super().__init__(db_manager)
+    def __init__(self, db_manager, registry, audit=None):
+        super().__init__(db_manager, registry, "FactTickets", audit=audit)
 
     # ── CRUD ──────────────────────────────────────────────────────────────
 
