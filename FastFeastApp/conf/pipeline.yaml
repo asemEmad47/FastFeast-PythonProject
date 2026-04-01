@@ -3,7 +3,6 @@
 # ============================================================
 
 files:
-
   agents:
     file_name: agents.csv
     file_type: dynamic
@@ -183,18 +182,18 @@ files:
       - ticket_id
       - new_status
 
-
 # ============================================================
 # TABLES (DWH LAYER)
 # ============================================================
 
 tables:
-
   AgentsDim:
     source: [agents, teams]
     joins:
-      - left: agents.team_id
-        right: [teams.team_id]
+      - left: agents
+        right: [teams]
+        left_keys: [team_id]
+        right_keys: [team_id]
         type: left
     target_table: AgentsDim
     table_type: dynamic_dimension
@@ -225,8 +224,10 @@ tables:
   CustomersDim:
     source: [customers, segments]
     joins:
-      - left: customers.segment_id
-        right: [segments.segment_id]
+      - left: customers
+        right: [segments]
+        left_keys: [segment_id]
+        right_keys: [segment_id]
         type: left
     target_table: CustomersDim
     table_type: dynamic_dimension
@@ -238,8 +239,8 @@ tables:
       - email
       - phone
       - segment_name
-      - signup_date 
-      - gender 
+      - signup_date
+      - gender
       - priority_support
       - discount_pct
       - created_at
@@ -273,8 +274,10 @@ tables:
     source: [restaurants, categories]
     target_table: RestaurantsDim
     joins:
-      - left: restaurants.category_id
-        right: [categories.category_id]
+      - left: restaurants
+        right: [categories]
+        left_keys: [category_id]
+        right_keys: [category_id]
         type: left
     table_type: dynamic_dimension
     repository: RestaurantRepository
@@ -314,7 +317,6 @@ tables:
       - channel_id
       - channel_name
 
-
   CitiesDim:
     source: [cities]
     target_table: CitiesDim
@@ -334,9 +336,8 @@ tables:
       - country
       - timezone
 
-
   DateDim:
-    generated: true   
+    generated: true
 
     target_table: DateDim
     table_type: dynamic_dimension
@@ -345,15 +346,14 @@ tables:
     primary_key: date_id
 
     keep_columns:
-      - date_id 
-      - full_date 
+      - date_id
+      - full_date
       - day
       - month
       - quarter
       - year
       - day_of_week
       - is_weekend
-
 
   DriversDim:
     source: [drivers]
@@ -387,12 +387,13 @@ tables:
       - created_at
       - updated_at
 
-
   ReasonsDim:
-    source: [reasons,reason_categories]
+    source: [reasons, reason_categories]
     joins:
-      - left: reasons.reason_category_id
-        right: [reason_categories.reason_category_id]
+      - left: reasons
+        right: [reason_categories]
+        left_keys: [reason_category_id]
+        right_keys: [reason_category_id]
         type: left
 
     target_table: ReasonsDim
@@ -410,15 +411,17 @@ tables:
     keep_columns:
       - reason_id
       - reason_name
-      - category_name   
+      - category_name
       - severity_level
-      - typical_refund_pct  
+      - typical_refund_pct
 
   FactTickets:
-    source: [tickets,orders]
+    source: [tickets, orders, ticket_events]
     joins:
-      - left: tickets.order_id
-        right: [orders.order_id, ticket_events.ticket_id]
+      - left: tickets
+        right: [orders, ticket_events]
+        left_keys: [order_id, ticket_id]
+        right_keys: [order_id, ticket_id]
         type: left
 
     dimension_sources:
@@ -444,7 +447,8 @@ tables:
         fk: channel_id
         type: left
       - dim: DateDim
-        fk: [date_key_ticket_created , date_key_first_response , date_key_resolved ]
+        fk:
+          [date_key_ticket_created, date_key_first_response, date_key_resolved]
         type: left
 
     target_table: FactTickets
@@ -476,27 +480,34 @@ tables:
       - date_key_first_response
       - date_key_resolved
       - order_amount
-      - delivery_fee 
-      - discount_amount 
-      - total_amount 
+      - delivery_fee
+      - discount_amount
+      - total_amount
       - revenue_impact
       - Status
 
     aggregated_columns:
-    - component: Transformer
-      actions:
-        - name: resolution_time_min
-          type: date_diff
-          params: { end: "resolved_at", start: "created_at", unit: "m" }
-        - name: first_response_time_min
-          type: date_diff
-          params: { end: "first_response_at", start: "created_at", unit: "m" }
-        - name: sla_first_response_breached
-          type: comparison
-          params: { left: "first_response_time_min", op: "<", right: "sla_first_due_at" }
-        - name: sla_resolution_breached
-          type: comparison
-          params: { left: "resolution_min", op: "<", right: "sla_resolve_due_at" }
-        - name: revenue_impact
-          type: summation
-          params: { left: "refund_amount" , op: "+", right: " discount_amount" }
+      - component: Transformer
+        actions:
+          - name: resolution_time_min
+            type: date_diff
+            params: { end: "resolved_at", start: "created_at", unit: "m" }
+          - name: first_response_time_min
+            type: date_diff
+            params: { end: "first_response_at", start: "created_at", unit: "m" }
+          - name: sla_first_response_breached
+            type: comparison
+            params:
+              {
+                left: "first_response_time_min",
+                op: "<",
+                right: "sla_first_due_at",
+              }
+          - name: sla_resolution_breached
+            type: comparison
+            params:
+              { left: "resolution_min", op: "<", right: "sla_resolve_due_at" }
+          - name: revenue_impact
+            type: summation
+            params:
+              { left: "refund_amount", op: "+", right: " discount_amount" }
