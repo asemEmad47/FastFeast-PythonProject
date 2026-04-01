@@ -7,7 +7,7 @@ from batch.batch import Batch
 from batch.micro_batch import MicroBatch
 from etl.workflow import WorkFlow
 
-
+import os
 class VariablesInitializer:
 
     def __init__(self) -> None:
@@ -25,46 +25,48 @@ class VariablesInitializer:
         self.archive_dir_batch: str
 
     def initialize_variables(self) -> None:
+        
+        # Initialize registry and parser
+        base_dir = os.path.dirname(__file__)
+        pipeline_file = os.path.abspath(os.path.join(base_dir, "..", "conf", "pipeline.yaml"))
+        batch_file    = os.path.abspath(os.path.join(base_dir, "..", "conf", "conf.yaml"))
+        
         self.parser = ConfFileParser()
         self.registry = DataRegistry(self.parser)
-        self.email_task = EmailTask()
-        # self.parser.parse("conf/pipeline.yaml")
+        self.registry.load_config(batch_file)
         
-        # temp initilization (will comment after integrating the registry)
-        self.micro_batch_path = "../../data/input/stream"
-        self.batch_path = "../../data/input/batch"
-        self.archive_dir = "../../data/archive"
-        self.archive_dir_stream = "stream"
-        self.archive_dir_batch = "batch"
-        self.batch_interval = 20
+        self.email_task = EmailTask()
+        
+        # File paths and batch interval
+        self.micro_batch_path = self.registry.get_microbatch_path()
+        self.batch_path = self.registry.get_batch_path()
+        self.archive_dir = self.registry.get_archive_dir()
+        self.archive_dir_stream = self.registry.get_archive_dir_stream()
+        self.archive_dir_batch = self.registry.get_archive_dir_batch()
+        self.batch_interval = int(self.registry.get_batch_interval())
         # ----------------------------------------------------------------  
+        
+        self.registry.load_config(pipeline_file)
 
         # Batch part
-        batch_audit = Audit()
         batch_workflow = WorkFlow()
         self.batch = Batch(
                 batch_workflow,
-                batch_audit, 
+                Audit("batch"),
                 FileTracker(self.archive_dir,self.archive_dir_stream,self.archive_dir_batch), 
                 self.registry, 
                 self.parser, 
                 self.email_task, 
                 self.batch_path
             )
-        # self.batch_interval = self.parser.get_batch_interval()
-        # self.batch_path = self.parser.get_batch_path()
-        # self.archive_dir = self.parser.get_archive_dir()
-        # self.archive_dir_batch = self.parser.get_archive_dir_batch()
-        # ----------------------------------------------------------------  
     
     
         # Micro-batch part
-        micro_batch_audit = Audit()
         micro_batch_workflow = WorkFlow()
         micro_batch_file_tracker = FileTracker(self.archive_dir,self.archive_dir_stream,self.archive_dir_batch)
         self.micro_batch = MicroBatch(
             micro_batch_workflow,
-            micro_batch_audit, 
+            Audit("micro_batch"),
             micro_batch_file_tracker,
             self.registry, 
             self.parser, 
@@ -72,6 +74,3 @@ class VariablesInitializer:
             self.micro_batch_path
         )
         micro_batch_file_tracker.set_micro_batch(self.micro_batch)
-        # self.micro_batch.source_path = self.micro_batch_path   
-        # self.archive_dir_stream = self.parser.get_archive_dir_stream()
-        # self.batch.source_path = self.batch_path
