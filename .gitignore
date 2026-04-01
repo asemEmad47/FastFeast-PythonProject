@@ -215,3 +215,6 @@ __marimo__/
 # DB and Repo Log Files
 FastFeastApp/db/logs/*
 FastFeastApp/repository/logs/*
+
+# config files
+conf.yaml
