@@ -10,14 +10,10 @@ from repository.base_repository import BaseRepository
 from db.database_manager import DatabaseManager
 
 
-class OrpahnRecordsRepostiroy(BaseRepository):
+class OrphanRecordsRepository(BaseRepository):
 
-    __table__  = "ORPHAN_RECORDS"
-    __pk__     = "quarantine_id"
-    __schema__ = "QUARANTINE"
-
-    def __init__(self, db_manager: DatabaseManager) -> None:
-        super().__init__(db_manager)
+    def __init__(self, db_manager, registry, audit=None):
+        super().__init__(db_manager, registry, "OrphanRecords", audit=audit)
 
     # ── CRUD ──────────────────────────────────────────────────────────────
 
@@ -53,11 +49,9 @@ class OrpahnRecordsRepostiroy(BaseRepository):
                         source_file,
                         orphaned_fk_column,
                         orphaned_fk_value,
-                        quarantined_at,
-                        resolved,
-                        resolved_at
+                        quarantined_at
                     )
-                    VALUES (PARSE_JSON(%s), %s, %s, %s, %s, %s, FALSE, NULL)
+                    VALUES (PARSE_JSON(%s), %s, %s, %s, %s, %s)
                     """,
                     (
                         json.dumps(record),
@@ -108,11 +102,9 @@ class OrpahnRecordsRepostiroy(BaseRepository):
                         source_file,
                         orphaned_fk_column,
                         orphaned_fk_value,
-                        quarantined_at,
-                        resolved,
-                        resolved_at
+                        quarantined_at
                     )
-                    VALUES (PARSE_JSON(%s), %s, %s, %s, %s, %s, FALSE, NULL)
+                    VALUES (PARSE_JSON(%s), %s, %s, %s, %s, %s)
                     """,
                     rows
                 )
@@ -120,45 +112,52 @@ class OrpahnRecordsRepostiroy(BaseRepository):
         except Exception:
             return False
 
-    def mark_resolved(self, quarantine_id: int) -> bool:
+    def delete_by_id(self, quarantine_id: int) -> bool:
         """
-        Marks a single quarantined record as resolved.
-        Called after the late-arriving dimension record finally lands
-        and the quarantined record is successfully reprocessed.
+        Deletes a quarantined record by its primary key.
+        Returns True if deletion succeeds, otherwise False.
         """
-        return self.update(
-            quarantine_id,
-            resolved=True,
-            resolved_at=datetime.utcnow().isoformat()
-        )
+        try:
+            with self._db.cursor_scope() as cursor:
+                cursor.execute(
+                    f"""
+                    DELETE FROM {self._full_table_name()}
+                    WHERE quarantine_id = %s
+                    """,
+                    (quarantine_id,)
+                )
+            return True
+        except Exception:
+            return False
+
+
+    def delete_by_orphaned_fk(
+        self,
+        orphaned_fk_column: str,
+        orphaned_fk_value:  str
+    ) -> bool:
+        """
+        Deletes quarantined records matching a specific orphaned FK column and value.
+        Returns True if deletion succeeds, otherwise False.
+        """
+        try:
+            with self._db.cursor_scope() as cursor:
+                cursor.execute(
+                    f"""
+                    DELETE FROM {self._full_table_name()}
+                    WHERE orphaned_fk_column = %s
+                      AND orphaned_fk_value  = %s
+                    """,
+                    (
+                        orphaned_fk_column,
+                        str(orphaned_fk_value)
+                    )
+                )
+            return True
+        except Exception:
+            return False
 
     # ── Custom ────────────────────────────────────────────────────────────
-
-    def get_unresolved(self) -> list[dict]:
-        """
-        Returns all unresolved quarantined records.
-        This is the primary query for the retry mechanism —
-        called after every new batch load to attempt reprocessing.
-        """
-        return self.get_by_attribute("resolved", False)
-
-    def get_unresolved_by_fk(self, orphaned_fk_column: str) -> list[dict]:
-        """
-        Returns all unresolved records with a specific orphaned FK column.
-        Used to target retry attempts after a specific dimension loads.
-        For example — after customers batch arrives, retry all records
-        where orphaned_fk_column = 'customer_id'.
-        """
-        with self._db.cursor_scope() as cursor:
-            cursor.execute(
-                f"""
-                SELECT * FROM {self._full_table_name()}
-                WHERE orphaned_fk_column = %s
-                AND resolved = FALSE
-                """,
-                (orphaned_fk_column,)
-            )
-            return cursor.fetchall()
 
     def get_by_source_table(self, source_table: str) -> list[dict]:
         """Returns all quarantined records destined for a specific table."""

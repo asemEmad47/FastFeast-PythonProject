@@ -35,11 +35,16 @@ class ConfFileParser:
         if not conf_section:
             return ""
         return conf_section.get("table_type", "")
+    
+    def get_target_schema(self, conf_section: dict) -> str:
+        if not conf_section:
+            return ""
+        return conf_section.get("schema", "")
 
     def get_target_primary_key(self, conf_section: dict) -> dict:
         if not conf_section:
             return {}
-        return conf_section.get("primary_key", {})
+        return conf_section.get("primary_key", "")
     
     def get_target_foreign_keys(self, conf_section: dict) -> dict:
         if not conf_section:

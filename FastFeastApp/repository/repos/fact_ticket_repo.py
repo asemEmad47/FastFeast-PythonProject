@@ -8,11 +8,8 @@ from db.database_manager import DatabaseManager
 
 class FactTicketsRepository(BaseRepository):
 
-    __table__  = "FactTickets"
-    __pk__     = "ticket_id"
-
-    def __init__(self, db_manager: DatabaseManager) -> None:
-        super().__init__(db_manager)
+    def __init__(self, db_manager, registry, audit=None):
+        super().__init__(db_manager, registry, "FactTickets", audit=audit)
 
     # ── CRUD ──────────────────────────────────────────────────────────────
 
@@ -34,7 +31,7 @@ class FactTicketsRepository(BaseRepository):
         ticket_id and order_id are degenerate dimensions —
         they live in the fact table with no corresponding dim table.
         """
-        return self.upsert_many(records, pk_column="ticket_id")
+        return self.upsert_many(records)
 
     # ── Custom ────────────────────────────────────────────────────────────
 

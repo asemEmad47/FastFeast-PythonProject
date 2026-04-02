@@ -1,9 +1,10 @@
 """
 helpers/logger_builder.py
 
-Shared helper for building daily rotating file loggers.
-Used by DatabaseManager and BaseRepository — keeps logger
-setup in one place rather than duplicated across modules.
+Shared helper for building daily rotating file loggers
+and providing standardized error logging.
+
+Used by DatabaseManager and BaseRepository.
 """
 from __future__ import annotations
 import os
@@ -27,7 +28,7 @@ def build_file_logger(name: str, log_dir: str) -> logging.Logger:
     if _logger.handlers:
         return _logger
 
-    _logger.setLevel(logging.ERROR)
+    _logger.setLevel(logging.INFO)
 
     handler = TimedRotatingFileHandler(
         filename    = os.path.join(log_dir, "pipeline.log"),
@@ -46,3 +47,18 @@ def build_file_logger(name: str, log_dir: str) -> logging.Logger:
     _logger.addHandler(handler)
     _logger.propagate = False
     return _logger
+
+
+def log_error(logger: logging.Logger, audit, message: str) -> None:
+    """
+    Logs an error to the module's rotating file logger
+    and optionally forwards to the Audit instance.
+
+    Args:
+        logger:  The module-level logger built by build_file_logger()
+        audit:   Audit instance or None
+        message: The formatted error message to log
+    """
+    logger.error(message)
+    if audit:
+        audit.log_failure(message)
