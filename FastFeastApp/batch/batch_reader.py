@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from audit.email_task import EmailTask
+from etl.tasks.email_task import EmailTask
 from etl.workflow import WorkFlow
 from audit.audit import Audit
 from registry.conf_file_parser import ConfFileParser

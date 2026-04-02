@@ -2,7 +2,7 @@ import os
 import shutil
 import threading
 
-from audit.email_task import EmailTask
+from etl.tasks.email_task import EmailTask
 from registry.conf_file_parser import ConfFileParser
 from registry.data_registry import DataRegistry
 from watchdog.observers import Observer
