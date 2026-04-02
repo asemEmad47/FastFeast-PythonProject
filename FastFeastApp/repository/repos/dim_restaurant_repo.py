@@ -33,7 +33,7 @@ class RestaurantsRepository(BaseRepository):
         Idempotent bulk upsert for RestaurantsDim.
         Re-processing the same batch file will not duplicate restaurants.
         """
-        return self.upsert_many(records, pk_column="restaurant_id")
+        return self.upsert_many(records)
 
     # ── Custom ────────────────────────────────────────────────────────────
 

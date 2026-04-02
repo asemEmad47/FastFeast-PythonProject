@@ -33,7 +33,7 @@ class AgentsRepository(BaseRepository):
         Idempotent bulk upsert for AgentsDim.
         Re-processing the same batch file will not duplicate agents.
         """
-        return self.upsert_many(records, pk_column="agent_id")
+        return self.upsert_many(records)
 
     # ── Custom ────────────────────────────────────────────────────────────
 

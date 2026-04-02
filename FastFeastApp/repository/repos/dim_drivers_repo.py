@@ -32,7 +32,7 @@ class DriversRepository(BaseRepository):
         Idempotent bulk upsert for DriversDim.
         Re-processing the same batch file will not duplicate drivers.
         """
-        return self.upsert_many(records, pk_column="driver_id")
+        return self.upsert_many(records)
 
     # ── Custom ────────────────────────────────────────────────────────────
 

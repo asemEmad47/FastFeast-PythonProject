@@ -38,7 +38,7 @@ class CustomersRepository(BaseRepository):
         Idempotent bulk upsert for CustomersDim.
         Re-processing the same batch file will not duplicate customers.
         """
-        return self.upsert_many(records, pk_column="customer_id")
+        return self.upsert_many(records)
 
     # ── Custom ────────────────────────────────────────────────────────────
 

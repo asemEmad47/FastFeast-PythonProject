@@ -2,7 +2,7 @@
 DatabaseManager — Singleton Pattern.
 
 One instance, one connection.
-Logging via Audit instance — writes to db/logs/pipeline.log daily.
+Errors logged to db/logs/pipeline.log daily via log_error helper.
 """
 from __future__ import annotations
 from contextlib import contextmanager
@@ -19,7 +19,7 @@ from config.settings import (
     SNOWFLAKE_WAREHOUSE,
     SNOWFLAKE_ROLE
 )
-from helpers.logger_builder import build_file_logger
+from helpers.logger_builder import build_file_logger, log_error
 
 
 _LOG_DIR = os.path.join(os.path.dirname(__file__), "logs")
@@ -37,26 +37,11 @@ class DatabaseManager:
             cls._instance._connection = cls._instance._create_connection()
         return cls._instance
 
-    def _log_success(self, message: str) -> None:
-        _logger.info(message)
-        if self._audit:
-            self._audit.log_success(message)
-
-    def _log_failure(self, message: str) -> None:
-        _logger.error(message)
-        if self._audit:
-            self._audit.log_failure(message)
-
-    def _log_warning(self, message: str) -> None:
-        _logger.warning(message)
-        if self._audit:
-            self._audit.log_failure(message)
-
     # ── Connection ────────────────────────────────────────────────────────
 
     def _create_connection(self) -> SnowflakeConnection:
         try:
-            conn = snowflake.connector.connect(
+            return snowflake.connector.connect(
                 account                   = SNOWFLAKE_ACCOUNT,
                 user                      = SNOWFLAKE_USER,
                 password                  = SNOWFLAKE_PASSWORD,
@@ -66,16 +51,8 @@ class DatabaseManager:
                 role                      = SNOWFLAKE_ROLE,
                 client_session_keep_alive = True
             )
-            self._log_success(
-                f"[DatabaseManager._create_connection] "
-                f"Connection established | "
-                f"account={SNOWFLAKE_ACCOUNT} | "
-                f"database={SNOWFLAKE_DATABASE} | "
-                f"warehouse={SNOWFLAKE_WAREHOUSE}"
-            )
-            return conn
         except Exception as e:
-            self._log_failure(
+            log_error(_logger, self._audit,
                 f"[DatabaseManager._create_connection] "
                 f"Failed to establish Snowflake connection | "
                 f"Reason: Could not authenticate or reach the Snowflake account | "
@@ -88,7 +65,7 @@ class DatabaseManager:
             self._connection.cursor().execute("SELECT 1")
             return True
         except Exception as e:
-            self._log_warning(
+            log_error(_logger, self._audit,
                 f"[DatabaseManager._is_alive] "
                 f"Connection ping failed — session may have expired | "
                 f"Raw error: {e}"
@@ -97,14 +74,10 @@ class DatabaseManager:
 
     def _ensure_connection(self) -> None:
         if self._connection.is_closed() or not self._is_alive():
-            self._log_warning(
-                f"[DatabaseManager._ensure_connection] "
-                f"Connection is closed or unresponsive — attempting reconnect"
-            )
             try:
                 self._connection = self._create_connection()
             except Exception as e:
-                self._log_failure(
+                log_error(_logger, self._audit,
                     f"[DatabaseManager._ensure_connection] "
                     f"Reconnection failed | "
                     f"Reason: Unable to re-establish Snowflake session | "
@@ -135,6 +108,3 @@ class DatabaseManager:
     def close(self) -> None:
         if self._connection and not self._connection.is_closed():
             self._connection.close()
-            self._log_success(
-                f"[DatabaseManager.close] Connection closed cleanly"
-            )

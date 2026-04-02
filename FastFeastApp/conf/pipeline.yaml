@@ -509,3 +509,42 @@ tables:
         - name: revenue_impact
           type: summation
           params: { left: "refund_amount" , op: "+", right: " discount_amount" }
+
+
+# ============================================================
+# TABLES (Quarantine Zone)
+# ============================================================
+  RejectedRecords:
+
+    schema: Quarantine
+    target_table: RejectedRecords
+    table_type: quarantine_zone
+    repository: RejectedRecordsRepository
+
+    primary_key: rejected_id
+
+    required_fields:
+      - rejected_id
+      - record_payload
+      - rejected_reason
+      - batch_source
+      - rejected_at
+
+
+  OrphanRecords:
+    
+    schema: Quarantine
+    target_table: OrphanRecords
+    table_type: quarantine_zone
+    repository: OrphanRecordsRepository
+
+    primary_key: quarantine_id
+
+    required_fields:
+      - quarantine_id
+      - record_payload
+      - source_table
+      - source_file
+      - orphaned_fk_column
+      - orphaned_fk_value
+      - quarantined_at

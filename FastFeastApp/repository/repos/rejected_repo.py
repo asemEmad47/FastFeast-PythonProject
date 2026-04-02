@@ -13,12 +13,8 @@ from db.database_manager import DatabaseManager
 
 class RejectedRecordsRepository(BaseRepository):
 
-    __table__  = "REJECTED_RECORDS"
-    __pk__     = "rejected_id"
-    __schema__ = "QUARANTINE"
-
-    def __init__(self, db_manager: DatabaseManager) -> None:
-        super().__init__(db_manager)
+    def __init__(self, db_manager, registry, audit=None):
+        super().__init__(db_manager, registry, "RejectedRecords", audit=audit)
 
     # ── CRUD ──────────────────────────────────────────────────────────────
 

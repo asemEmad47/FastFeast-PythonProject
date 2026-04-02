@@ -31,7 +31,7 @@ class FactTicketsRepository(BaseRepository):
         ticket_id and order_id are degenerate dimensions —
         they live in the fact table with no corresponding dim table.
         """
-        return self.upsert_many(records, pk_column="ticket_id")
+        return self.upsert_many(records)
 
     # ── Custom ────────────────────────────────────────────────────────────
 
