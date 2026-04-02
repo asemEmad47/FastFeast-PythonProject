@@ -14,33 +14,37 @@ from registry.data_registry import DataRegistry
 
 class PIIMask(DataFlowComponent):
 
-    def __init__(
-        self,
-        pii_fields: list[str],
-        audit:      Audit,
-        registry:   DataRegistry = None,
-    ) -> None:
+    def __init__(self, audit: Audit, registry: DataRegistry = None):
         super().__init__(audit=audit, registry=registry)
-        self.pii_fields = pii_fields
 
-    def do_task(
-        self,
-        data_frame_dict: dict,
-        metrics_dict:    dict,
-        bad_rows:        Optional[pd.DataFrame],
-    ) -> tuple[bool, list[str], dict, dict, Optional[pd.DataFrame]]:
-        df = self.get_df(data_frame_dict)
+    def do_task(self, data_frame_dict: dict) -> tuple[bool, list[str], dict, dict, Optional[pd.DataFrame]]:
+        errors = []
+        source = data_frame_dict.get("source")
+        if not source:
+            errors.append("Missing 'source' in data_frame_dict")
+            return False, errors, data_frame_dict, {}, None
+        
+        pii_fields = self.registry.get_pii_columns(source)
+        if not pii_fields:
+            return True, errors, data_frame_dict, {}, None
+        
+        df = data_frame_dict.get("dataframe")
         if df is None:
-            return False, ["PIIMask received None df"], data_frame_dict, metrics_dict, bad_rows
-        try:
-            masked = df.copy()
-            for field in self.pii_fields:
-                if field in masked.columns:
-                    masked[field] = masked[field].apply(
-                        lambda v: hashlib.sha256(str(v).encode()).hexdigest()
-                        if pd.notna(v) else v
-                    )
-            self.set_df(data_frame_dict, masked)
-            return True, [], data_frame_dict, metrics_dict, bad_rows
-        except Exception as exc:
-            return False, [f"PIIMask failed: {exc}"], data_frame_dict, metrics_dict, bad_rows
+            errors.append("Missing 'dataframe' in data_frame_dict")
+            return False, errors, data_frame_dict, {}, None
+        
+        for field in pii_fields:
+            if field in df.columns:
+                df[field] = df[field].apply(self._hash_pii)
+            else:
+                errors.append(f"PII field '{field}' not found in dataframe columns")
+
+        data_frame_dict["dataframe"] = df
+        return True, errors, data_frame_dict, {}, None
+    
+    def _hash_pii(self,val):
+        if pd.isnull(val):
+            return val
+        
+        byte_data = str(val).encode()
+        return hashlib.sha256(byte_data).hexdigest()
