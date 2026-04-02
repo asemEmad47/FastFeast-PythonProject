@@ -95,8 +95,8 @@ class ConfFileParser:
     def get_fact_dimension_sources(self, conf_section: dict) -> list[dict]:
         return conf_section.get("dimension_sources", [])
     
-    def get_fact_aggregated_columns(self, conf_section: dict) -> list[dict]:
-        components =  conf_section.get("aggregated_columns", []) or []
+    def get_aggregated_columns(self, conf_section: dict) -> list[dict]:
+        components = conf_section.get("aggregated_columns", []) or []
 
         result = []
 
@@ -105,11 +105,22 @@ class ConfFileParser:
             actions = comp.get("actions", [])
 
             for action in actions:
+                action_type = action.get("type")
+                params      = action.get("params", {})
+
+                # arithmetic has list of params, others have dict
+                if action_type == "arithmetic":
+                    if not isinstance(params, list):
+                        params = [params]
+                else:
+                    if not isinstance(params, dict):
+                        params = {}
+
                 result.append({
                     "component": component_name,
-                    "name": action.get("name"),
-                    "type": action.get("type"),
-                    "params": action.get("params", {})
+                    "name":      action.get("name"),
+                    "type":      action_type,
+                    "params":    params
                 })
 
         return result
@@ -125,6 +136,7 @@ class ConfFileParser:
         return conf_section.get("files", {})
 
     def get_file_conf(self, files_section: dict, file_key: str) -> dict:
+        
         if not files_section:
             return {}
         return files_section.get(file_key, {})

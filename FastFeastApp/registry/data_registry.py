@@ -393,7 +393,7 @@ class DataRegistry:
 
     def get_aggregated_columns(self, table_key: str) -> list[dict]:
         conf = self.get_table_conf(table_key)
-        return self._parser.get_fact_aggregated_columns(conf) or []
+        return self._parser.get_aggregated_columns(conf) or []
 
     # -------------------- File config wrappers --------------------
     def get_workflow_files(self) -> dict:

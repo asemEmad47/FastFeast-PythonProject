@@ -492,9 +492,11 @@ tables:
           - name: resolution_time_min
             type: date_diff
             params: { end: "resolved_at", start: "created_at", unit: "m" }
+
           - name: first_response_time_min
             type: date_diff
             params: { end: "first_response_at", start: "created_at", unit: "m" }
+
           - name: sla_first_response_breached
             type: comparison
             params:
@@ -503,11 +505,18 @@ tables:
                 op: "<",
                 right: "sla_first_due_at",
               }
+
           - name: sla_resolution_breached
             type: comparison
             params:
-              { left: "resolution_min", op: "<", right: "sla_resolve_due_at" }
+              {
+                left: "resolution_time_min",
+                op: "<",
+                right: "sla_resolve_due_at",
+              }
+
           - name: revenue_impact
-            type: summation
+            type: arithmetic
             params:
-              { left: "refund_amount", op: "+", right: " discount_amount" }
+              - { column: "refund_amount", op: "+", factor: 1 }
+              - { column: "discount_amount", op: "+", factor: 1 }
