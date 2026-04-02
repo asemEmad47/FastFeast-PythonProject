@@ -2,26 +2,25 @@
 ReadFromSourceFactory — Factory Pattern.
 Inspects file extension → returns ReadFromCSV or ReadFromJSON.
 """
-from etl.components.read_from_csv  import ReadFromCSV
-from etl.components.read_from_json import ReadFromJSON
-from registry.data_registry        import DataRegistry
-from registry.conf_file_parser     import ConfFileParser
+from FastFeastApp.etl.components.read_from_csv  import ReadFromCSV
+from FastFeastApp.etl.components.read_from_json import ReadFromJSON
 
 
 class ReadFromSourceFactory:
 
-    @staticmethod
-    def create_source(
-        file_name: str,
-        registry:  DataRegistry,
-        parser:    ConfFileParser,
-    ):
-        ext   = file_name.rsplit(".", 1)[-1].lower()
-        audit = getattr(registry, "audit", None)
+    _mapping = {
+        "csv": ReadFromCSV,
+        "json": ReadFromJSON,
+    }
 
-        if ext == "csv":
-            return ReadFromCSV(file_path=file_name, audit=audit, registry=registry)
-        elif ext == "json":
-            return ReadFromJSON(file_path=file_name, audit=audit, registry=registry)
-        else:
-            raise ValueError(f"Unsupported file type '.{ext}' for '{file_name}'")
+    @staticmethod
+    def create_source(file_name: str):
+        ext = file_name.rsplit(".", 1)[-1].lower()
+
+        reader_class = ReadFromSourceFactory._mapping.get(ext)
+
+        if not reader_class:
+            print("Unsupported file type '.{ext}'")
+            return
+
+        return reader_class()
