@@ -20,7 +20,7 @@ from etl.components.quarantine_writer           import QuarantineWriter
 from etl.components.transformer                 import Transformer
 from etl.components.join                        import Join
 from etl.components.load_to_target              import LoadToTarget
-from etl.lookup.orphans_handler                 import OrphansHandler
+from etl.components.orphans_handler                 import OrphansHandler
 from etl.lookup.duplicates_lookup               import DuplicatesLookUp
 
 
