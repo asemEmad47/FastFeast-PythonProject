@@ -56,6 +56,7 @@ class ValidatorComponent(DataFlowComponent):
         # Stage 2: Rows Validation
         self._validator.set_validator(self._validations.get("rows"))
         success, stage_errors, clean_df, stats = self._validator.validate(df, model, required)
+        self.audit.track_metrics(stats) 
         
         if not success:
             return False, stage_errors, data_frame_dict, stats, None
