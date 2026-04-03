@@ -1,7 +1,9 @@
+from db.database_manager import DatabaseManager
 from registry.conf_file_parser import ConfFileParser
 from registry.data_registry import DataRegistry
 from audit.audit import Audit
 from etl.tasks.email_task import EmailTask
+from repository.base_repository import BaseRepository
 from utils.file_tracker import FileTracker
 from batch.batch import Batch
 from batch.micro_batch import MicroBatch
@@ -74,3 +76,12 @@ class VariablesInitializer:
             self.micro_batch_path
         )
         micro_batch_file_tracker.set_micro_batch(self.micro_batch)
+        
+        
+        # Register repositories for all tables
+        db = DatabaseManager()
+        for table_key in self.registry.get_all_table_keys():
+            self.registry.register_repository(
+                table_key,
+                BaseRepository(db,self.registry, table_key)
+            )
