@@ -127,9 +127,9 @@ class BaseRepository(Generic[T]):
             )
             return []
 
-    def get_all_ids(self, id_column: str = None) -> set:
+    def get_all_ids(self) -> set:
         method = "get_all_ids"
-        pk     = id_column or self.__pk__
+        pk = self.__pk__
         try:
             rows = self._db.execute(f"SELECT {pk} FROM {self._full_table_name()}")
             return {row[0] for row in rows}
@@ -154,20 +154,20 @@ class BaseRepository(Generic[T]):
             )
             return []
 
-    def get_existing_ids(self, id_column: str, ids: set) -> set:
+    def get_existing_ids(self, ids: set) -> set:
         method = "get_existing_ids"
         if not ids:
             return set()
         try:
             placeholders = ", ".join(["%s"] * len(ids))
-            sql  = f"SELECT {id_column} FROM {self._full_table_name()} WHERE {id_column} IN ({placeholders})"
+            sql  = f"SELECT {self.__pk__} FROM {self._full_table_name()} WHERE {self.__pk__} IN ({placeholders})"
             rows = self._db.execute(sql, tuple(ids))
             return {row[0] for row in rows}
         except Exception as e:
             log_error(_logger, self._audit,
                 f"{self._ctx(method)} Failed to fetch existing IDs from {self._full_table_name()} | "
                 f"Reason: IN query execution failed | "
-                f"id_column={id_column} | ids_count={len(ids)} | Raw error: {e}"
+                f"id_column={self.__pk__} | ids_count={len(ids)} | Raw error: {e}"
             )
             return set()
 
