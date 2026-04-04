@@ -1,4 +1,4 @@
-from audit.email_task import EmailTask
+from etl.tasks.email_task import EmailTask
 from batch.batch_reader import BatchReader
 from etl.workflow import WorkFlow
 from audit.audit import Audit

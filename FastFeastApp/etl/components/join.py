@@ -1,12 +1,3 @@
-"""
-Join — DataFlowComponent.
-
-Owns data_framse_dicts: List[dict] — the list of all source data_frame_dicts
-loaded by before_join_components. Set by DataFlowTask via set_data_framse_dict().
-
-Merges all source DataFrames sequentially using join_configs from pipeline.yaml.
-Result replaces data_frame_dict["dataframe"] for the after_join stage.
-"""
 from __future__ import annotations
 from typing import Optional
 import pandas as pd
@@ -17,74 +8,76 @@ from registry.data_registry import DataRegistry
 
 class Join(DataFlowComponent):
 
-    def __init__(
-        self,
-        join_configs: list[dict],
-        audit:        Audit,
-        registry:     DataRegistry = None,
-    ) -> None:
+    def __init__(self, audit: Audit, registry: DataRegistry = None):
         super().__init__(audit=audit, registry=registry)
-        self.join_configs       = join_configs          # from pipeline.yaml joins section
-        self.data_framse_dicts: list[dict] = []         # set by DataFlowTask
+        self.data_framse_dicts: list[dict] = []
+
+    def do_task(self, data_frame_dict: dict) -> tuple[bool, list[str], dict, dict, Optional[pd.DataFrame]]:
+        errors = []
+        
+        dimension_groups: dict[str, list[dict]] = {}
+        for d in self.data_framse_dicts:
+            dimension = d["dimension"]
+            if dimension not in dimension_groups:
+                dimension_groups[dimension] = []
+            dimension_groups[dimension].append(d)
+
+        for dimension, dicts in dimension_groups.items():
+
+            join_configs = self.registry.get_join_config(dimension)
+            
+            if not join_configs:
+                continue
+            
+            for config in join_configs:
+
+                for right in config["right"]:
+                    if "left_key" not in right or "right_key" not in right:
+                        errors.append(f"Missing keys in join config for dimension '{dimension}'")
+                        return False, errors, data_frame_dict, {}, None
+                    
+            df_lookup: dict[str, pd.DataFrame] = {}
+            
+            for d in dicts:
+                df_lookup[d["source"]] = d["dataframe"]
+
+            base_source = join_configs[0]["left_table"]
+            if base_source not in df_lookup:
+                errors.append(f"Base table '{base_source}' not found for dimension '{dimension}'")
+                return False, errors, data_frame_dict, {}, None
+
+            merged_df = df_lookup[base_source]
+
+            for config in join_configs:
+                join_type = config["type"]
+
+                for right in config["right"]:
+                    right_table = right["table"]
+                    left_key    = right["left_key"]
+                    right_key   = right["right_key"]
+
+                    if right_table not in df_lookup:
+                        errors.append(f"Right table '{right_table}' not found for dimension '{dimension}'")
+                        return False, errors, data_frame_dict, {}, None
+
+                    merged_df = merged_df.merge(
+                        df_lookup[right_table],
+                        left_on=left_key,
+                        right_on=right_key,
+                        how=join_type,
+                        suffixes=("", f"_{right_table}")
+                    )
+
+            for d in dicts:
+                d["dataframe"] = merged_df
+
+            first = dicts[0]
+            first["target"] = self.registry.get_target_table_name(first["source"])
+            del first["source"]
+            for d in dicts[1:]:
+                self.data_framse_dicts.remove(d)
+
+        return True, errors, data_frame_dict, {}, None
 
     def set_data_framse_dict(self, data_framse_dicts: list[dict]) -> None:
-        """Called by DataFlowTask after before_join stage completes."""
         self.data_framse_dicts = data_framse_dicts
-
-    def do_task(
-        self,
-        data_frame_dict: dict,
-        metrics_dict:    dict,
-        bad_rows:        Optional[pd.DataFrame],
-    ) -> tuple[bool, list[str], dict, dict, Optional[pd.DataFrame]]:
-        """
-        Left df comes from data_frame_dict (primary source, already processed).
-        Right dfs come from self.data_framse_dicts by matching source key.
-        """
-        merged_df = self.get_df(data_frame_dict)
-        if merged_df is None:
-            return False, ["Join: primary df is None"], data_frame_dict, metrics_dict, bad_rows
-
-        errors = []
-
-        for cfg in self.join_configs:
-            left_on    = cfg.get("left_on")
-            right_key  = cfg.get("right_key")     # source file key e.g. "orders"
-            right_on   = cfg.get("right_on")
-            join_type  = cfg.get("type", "left")
-
-            # Find matching right df from data_framse_dicts by source key
-            right_dict = next(
-                (d for d in self.data_framse_dicts if d.get("source") == right_key),
-                None,
-            )
-            if right_dict is None:
-                msg = f"Join: no df found for source '{right_key}' — skipping"
-                errors.append(msg)
-                self.audit.log_failure(msg)
-                continue
-
-            right_df = self.get_df(right_dict)
-            if right_df is None:
-                errors.append(f"Join: df for '{right_key}' is None — skipping")
-                continue
-
-            try:
-                merged_df = pd.merge(
-                    merged_df,
-                    right_df,
-                    left_on  = left_on,
-                    right_on = right_on,
-                    how      = join_type,
-                    suffixes = ("", f"_{right_key}"),
-                )
-            except Exception as exc:
-                return (
-                    False,
-                    [f"Join failed ({left_on} ← {right_key}.{right_on}): {exc}"],
-                    data_frame_dict, metrics_dict, bad_rows,
-                )
-
-        self.audit.track_metrics("join", {"output_rows": len(merged_df)})
-        self.set_df(data_frame_dict, merged_df)
-        return True, errors, data_frame_dict, metrics_dict, bad_rows

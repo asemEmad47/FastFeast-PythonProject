@@ -10,56 +10,59 @@ from __future__ import annotations
 from typing import Optional
 import pandas as pd
 from etl.components.data_flow_component import DataFlowComponent
+from validation.validator import Validator
 from validation.validator_context import ValidatorContext
-from validation.schema_validator  import SchemaValidator
-from validation.rows_validator    import RowsValidator
 from audit.audit import Audit
 from registry.data_registry import DataRegistry
 
 
 class ValidatorComponent(DataFlowComponent):
 
-    def __init__(
-        self,
-        table_conf: dict,
-        audit:      Audit,
-        registry:   DataRegistry,
-    ) -> None:
+    def __init__(self, audit: Audit, registry: DataRegistry = None):
         super().__init__(audit=audit, registry=registry)
-        self.table_conf = table_conf
-        self._context   = ValidatorContext()
+        self._validations = {}
+        self._validator = ValidatorContext()
 
-    def do_task(
-        self,
-        data_frame_dict: dict,
-        metrics_dict:    dict,
-        bad_rows:        Optional[pd.DataFrame],
-    ) -> tuple[bool, list[str], dict, dict, Optional[pd.DataFrame]]:
+    def do_task(self, data_frame_dict: dict) -> tuple[bool, list[str], dict, dict, Optional[pd.DataFrame]]:
+        
+        errors = []
+        dimension = data_frame_dict.get("dimension")
+        source = data_frame_dict.get("source")
+        
+        print(source)
+        print(dimension)
+        if not dimension:
+            errors.append("Missing 'dimension' in data_frame_dict")
+            return False, errors, data_frame_dict, {}, None
+        
+        df = data_frame_dict.get("dataframe")
+        model = self.registry.get_model(source)
+        required = self.registry.get_file_required_fields(source)
+        
+        print("model = ", model)
+        print("required = ", required)
+        
+        if model is None or required is None:
+            errors.append(f"Model or required fields not found for dimension '{dimension}'")
+            return False, errors, data_frame_dict, {}, None
 
-        df    = self.get_df(data_frame_dict)
-        model = self.registry.get_model_for_file(
-            self.table_conf.get("file_name", "")
-        )
-
-        # ── Stage 1: Schema — hard fail ────────────────────────────
-        self._context.set_validator(SchemaValidator())
-        ok, errors, df = self._context.validate(df, model, self.table_conf)
-        if not ok:
-            metrics_dict["failed_records"] += len(df) if df is not None else 0
-            bad_rows = self.append_bad_rows(bad_rows, df)
-            return False, errors, data_frame_dict, metrics_dict, bad_rows
-
-        # ── Stage 2: Rows — soft fail ──────────────────────────────
-        self._context.set_validator(RowsValidator())
-        ok, errors, df = self._context.validate(df, model, self.table_conf)
-
-        # RowsValidator returns cleaned df; rejected rows tracked via errors count
-        null_count = sum(1 for e in errors if "Null" in e)
-        metrics_dict["null_records"]   += null_count
-        metrics_dict["failed_records"] += null_count
-        metrics_dict["passed_records"]  = (
-            metrics_dict["total_in_records"] - metrics_dict["failed_records"]
-        )
-
-        self.set_df(data_frame_dict, df)
-        return True, errors, data_frame_dict, metrics_dict, bad_rows
+        # Stage 1: Schema Validation
+        self._validator.set_validator(self._validations.get("schema"))
+        success, stage_errors, df, stats = self._validator.validate(df, model, required)
+        
+        if not success:
+            return False, stage_errors, data_frame_dict, stats, None
+        
+        # Stage 2: Rows Validation
+        self._validator.set_validator(self._validations.get("rows"))
+        success, stage_errors, clean_df, stats = self._validator.validate(df, model, required)
+        
+        if not success:
+            return False, stage_errors, data_frame_dict, stats, None
+        
+        data_frame_dict["dataframe"] = clean_df
+        return True, stage_errors, data_frame_dict, stats, None
+    
+    def register_validations(self, validations: dict[str, Validator]) -> None:
+        for name, validator in validations.items():
+            self._validations[name] = validator

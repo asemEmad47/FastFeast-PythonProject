@@ -35,11 +35,16 @@ class ConfFileParser:
         if not conf_section:
             return ""
         return conf_section.get("table_type", "")
+    
+    def get_target_schema(self, conf_section: dict) -> str:
+        if not conf_section:
+            return ""
+        return conf_section.get("schema", "")
 
     def get_target_primary_key(self, conf_section: dict) -> dict:
         if not conf_section:
             return {}
-        return conf_section.get("primary_key", {})
+        return conf_section.get("primary_key", "")
     
     def get_target_foreign_keys(self, conf_section: dict) -> dict:
         if not conf_section:
@@ -67,28 +72,27 @@ class ConfFileParser:
         structured_joins = []
 
         for join in joins:
-            left = join.get("left", "")
-            right = join.get("right", [])
-            join_type = join.get("type", "inner")
-
-            left_table, left_column = left.split(".")
+            left_table  = join.get("left", "")
+            right       = join.get("right", [])
+            left_keys   = join.get("left_keys", [])
+            right_keys  = join.get("right_keys", [])
+            join_type   = join.get("type", "inner")
 
             if isinstance(right, str):
                 right = [right]
 
-            right_structured = []
-            for r in right:
-                table, column = r.split(".")
-                right_structured.append({
-                    "table": table,
-                    "column": column
+            rights = []
+            for i, right_table in enumerate(right):
+                rights.append({
+                    "table":      right_table,
+                    "left_key":   left_keys[i],
+                    "right_key":  right_keys[i]
                 })
 
             structured_joins.append({
                 "left_table": left_table,
-                "left_column": left_column,
-                "right": right_structured,
-                "type": join_type
+                "right":      rights,
+                "type":       join_type
             })
 
         return structured_joins
@@ -96,8 +100,8 @@ class ConfFileParser:
     def get_fact_dimension_sources(self, conf_section: dict) -> list[dict]:
         return conf_section.get("dimension_sources", [])
     
-    def get_fact_aggregated_columns(self, conf_section: dict) -> list[dict]:
-        components =  conf_section.get("aggregated_columns", []) or []
+    def get_aggregated_columns(self, conf_section: dict) -> list[dict]:
+        components = conf_section.get("aggregated_columns", []) or []
 
         result = []
 
@@ -106,11 +110,22 @@ class ConfFileParser:
             actions = comp.get("actions", [])
 
             for action in actions:
+                action_type = action.get("type")
+                params      = action.get("params", {})
+
+                # arithmetic has list of params, others have dict
+                if action_type == "arithmetic":
+                    if not isinstance(params, list):
+                        params = [params]
+                else:
+                    if not isinstance(params, dict):
+                        params = {}
+
                 result.append({
                     "component": component_name,
-                    "name": action.get("name"),
-                    "type": action.get("type"),
-                    "params": action.get("params", {})
+                    "name":      action.get("name"),
+                    "type":      action_type,
+                    "params":    params
                 })
 
         return result
@@ -126,6 +141,7 @@ class ConfFileParser:
         return conf_section.get("files", {})
 
     def get_file_conf(self, files_section: dict, file_key: str) -> dict:
+        
         if not files_section:
             return {}
         return files_section.get(file_key, {})

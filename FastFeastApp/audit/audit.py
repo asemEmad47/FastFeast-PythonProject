@@ -4,10 +4,11 @@ from typing import Any
 from helpers.logger_helper import setup_logger
 
 class Audit:
-    def __init__(self, mode: str, batch_date: str, hour: str | None = None):
+    def __init__(self, mode: str):
         self.mode = mode
-        self.batch_date = batch_date
-        self.logger = setup_logger(mode, batch_date, hour)
+        self.batch_date: str | None = None
+        self.hour: str | None = None
+        self.logger = None
         self.reset_batch()
         self.reset_file()
         self.reset_stage()
@@ -51,9 +52,13 @@ class Audit:
 
     # region batch methods
 
-    def start_batch(self):
+    def start_batch(self, batch_date: str, hour: str | None = None):
+        self.batch_date = batch_date
+        self.hour = hour
+        self.logger = setup_logger(self.mode, batch_date, hour)
         self._batch_start_time = datetime.now(timezone.utc)
         self.logger.info(f"BATCH_START | mode={self.mode} | batch_date={self.batch_date}")
+
 
     def end_batch(self):
         elapsed_ms = 0

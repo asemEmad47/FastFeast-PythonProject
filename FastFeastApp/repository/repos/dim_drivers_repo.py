@@ -8,12 +8,8 @@ from db.database_manager import DatabaseManager
 
 class DriversRepository(BaseRepository):
 
-    __table__  = "DimDrivers"
-    __pk__     = "driver_id"
-
-    def __init__(self, db_manager: DatabaseManager) -> None:
-        super().__init__(db_manager)
-
+    def __init__(self, db_manager, registry, audit=None):
+        super().__init__(db_manager, registry, "DriversDim", audit=audit)
     # ── CRUD ──────────────────────────────────────────────────────────────
 
     def get_driver_by_id(self, driver_id: int) -> dict | None:
@@ -36,7 +32,7 @@ class DriversRepository(BaseRepository):
         Idempotent bulk upsert for DriversDim.
         Re-processing the same batch file will not duplicate drivers.
         """
-        return self.upsert_many(records, pk_column="driver_id")
+        return self.upsert_many(records)
 
     # ── Custom ────────────────────────────────────────────────────────────
 

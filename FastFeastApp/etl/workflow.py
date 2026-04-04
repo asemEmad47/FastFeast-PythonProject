@@ -25,7 +25,7 @@ from __future__ import annotations
 import threading
 
 from audit.audit                        import Audit
-from audit.email_task                   import EmailTask
+from etl.tasks.email_task                   import EmailTask
 from registry.conf_file_parser          import ConfFileParser
 from registry.data_registry             import DataRegistry
 from utils.file_tracker                 import FileTracker

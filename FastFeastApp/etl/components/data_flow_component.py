@@ -34,17 +34,12 @@ from registry.data_registry import DataRegistry
 
 class DataFlowComponent(ABC):
 
-    def __init__(self, audit: Audit, registry: DataRegistry = None) -> None:
+    def __init__(self, audit: Audit, registry: DataRegistry = None):
         self.audit    = audit
         self.registry = registry
 
     @abstractmethod
-    def do_task(
-        self,
-        data_frame_dict: dict,
-        metrics_dict:    dict,
-        bad_rows:        Optional[pd.DataFrame],
-    ) -> tuple[bool, list[str], dict, dict, Optional[pd.DataFrame]]:
+    def do_task( self, data_frame_dict: dict) -> tuple[bool, list[str], dict, dict, Optional[pd.DataFrame]]:
         """
         Process data_frame_dict["dataframe"].
         Mutate metrics_dict in place.

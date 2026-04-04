@@ -10,7 +10,8 @@ import pandas as pd
 from datetime import date, datetime
 from db.database_manager import DatabaseManager
 from repository.repos.dim_agents_repo import AgentsRepository
-
+from registry.data_registry import DataRegistry
+from registry.conf_file_parser import ConfFileParser
 
 # ── Test Data ─────────────────────────────────────────────────────────────────
 
@@ -207,7 +208,11 @@ def run_all_tests() -> None:
     print("═" * 60)
 
     db   = DatabaseManager()
-    repo = AgentsRepository(db)
+    
+    conf_file_parser = ConfFileParser()
+    registry = DataRegistry(conf_file_parser)
+    registry.load_config("conf/pipeline.yaml")
+    repo = AgentsRepository(db, registry)
     df   = build_agents_dataframe()
     records = df_to_records(df)
 
