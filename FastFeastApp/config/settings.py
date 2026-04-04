@@ -3,9 +3,9 @@ settings.py — All environment-level constants in one place.
 Override with environment variables in production.
 """
 import os
-from dotenv import load_dotenv
+#from dotenv import load_dotenv
 
-load_dotenv()
+#load_dotenv()
 
 DATABASE_URL             = os.getenv("FF_DATABASE_URL",   "postgresql://user:pass@localhost/fastfeast")
 BATCH_SOURCE_DIR         = os.getenv("FF_BATCH_DIR",      "data/input/batch")
