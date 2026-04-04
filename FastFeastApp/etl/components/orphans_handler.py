@@ -1,12 +1,3 @@
-"""
-OrphansHandler — DataFlowComponent.
-Orchestrates orphan checking across ALL foreign keys in table_conf.
-Creates one OrphanLookUp per FK and runs them in sequence.
-
-UML methods:
-  still_orphan(dimName, rec_id)     → checks if a record is still an orphan
-  remove_from_orphans(attribute)    → marks orphan as resolved in orphan repo
-"""
 from __future__ import annotations
 from typing import Optional
 import pandas as pd
@@ -18,56 +9,25 @@ from audit.audit import Audit
 
 class OrphansHandler(DataFlowComponent):
 
-    def __init__(
-        self,
-        foreign_keys: dict,     # {fk_col: "DimTable.pk_col"}
-        registry:     DataRegistry,
-        audit:        Audit,
-    ) -> None:
+    def __init__(self, audit: Audit, registry: DataRegistry = None):
         super().__init__(audit=audit, registry=registry)
-        self.foreign_keys = foreign_keys
 
-    def do_task(
-        self,
-        data_frame_dict: dict,
-        metrics_dict:    dict,
-        bad_rows:        Optional[pd.DataFrame],
-    ) -> tuple[bool, list[str], dict, dict, Optional[pd.DataFrame]]:
-        errors = []
+    def do_task(self, data_frame_dict: dict) -> tuple[bool, list[str], dict, dict, Optional[pd.DataFrame]]:
+        orphan_table = self.registry.get_orphan_table_name()
+        if not orphan_table:
+            return False, ["OrphansHandler: orphan table name not found in registry"], data_frame_dict, {}, None
+        
+        
+        
+        
+        
+    def still_orphan(self, dim_name: str, ids: set) -> bool:
 
-        for fk_col, ref in self.foreign_keys.items():
-            dim_table, pk_col = ref.split(".")
-
-            lookup = OrphanLookUp(
-                fk_column = fk_col,
-                dim_table = dim_table,
-                pk_column = pk_col,
-                registry  = self.registry,
-                audit     = self.audit,
-            )
-            ok, errs, data_frame_dict, metrics_dict, bad_rows = lookup.do_task(
-                data_frame_dict, metrics_dict, bad_rows
-            )
-            errors.extend(errs)
-            if not ok:
-                return False, errors, data_frame_dict, metrics_dict, bad_rows
-
-        return True, errors, data_frame_dict, metrics_dict, bad_rows
-
-    def still_orphan(self, dim_name: str, rec_id) -> bool:
-        """
-        Check if a previously quarantined record is still an orphan
-        by verifying the FK value now exists in the dim table.
-        Returns True if still orphan (FK not found), False if resolved.
-        """
-        existing = self.registry.get_existing_ids(dim_name, dim_name, {rec_id})
-        return rec_id not in existing
+        existing = self.registry.get_existing_ids(dim_name, dim_name, ids)
+        return not ids.issubset(existing)
 
     def remove_from_orphans(self, attribute: str) -> bool:
-        """
-        Mark orphan records resolved in the orphan repository
-        after the late-arriving dimension finally arrives.
-        """
+
         orphan_repo = self.registry.get_repository("OrphanRepo")
         if orphan_repo is None:
             return False
