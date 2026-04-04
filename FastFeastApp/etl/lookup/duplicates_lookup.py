@@ -33,10 +33,16 @@ class DuplicatesLookUp(LookUp):
         if(existing_ids is None):
             return False, ["DuplicatesLookUp: failed to retrieve existing ids from repository"], data_frame_dict, {}, None
 
-        pii_cols = self.registry.get_pii_columns(dimension)
+        pii_cols = []
+        dimentsion_sources = self.registry.get_target_sources(dimension)
+        for source in dimentsion_sources:
+            source_pii_cols = self.registry.get_source_pii_columns(source)
+            if source_pii_cols:
+                pii_cols.extend(source_pii_cols)
+                
         keep_cols = [col for col in df.columns if col not in pii_cols]
-
-        existing_rows = repository.get_columns(keep_cols)
+        
+        existing_rows = repository.get_columns_by_ids(keep_cols, existing_ids)
         db_df = pd.DataFrame(existing_rows, columns=keep_cols)
 
         merged = df[keep_cols].merge(db_df, on=keep_cols, how='left', indicator=True)

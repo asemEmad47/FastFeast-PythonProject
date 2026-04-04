@@ -12,6 +12,39 @@ class OrphanLookUp(LookUp):
         super().__init__(audit=audit, registry=registry)
 
     def do_task(self, data_frame_dict: dict) -> tuple[bool, list[str], dict, dict, Optional[pd.DataFrame]]:
-        df = self.get_df(data_frame_dict)
-        dimension = data_frame_dict.get("dimension")
-
+        df = data_frame_dict['dataframe']
+        if df is None:
+            return False, ["OrphanLookUp: missing dataframe"], data_frame_dict, {}, None
+        
+        dimension = data_frame_dict['dimension']
+        if dimension is None:
+            return False, ["OrphanLookUp: missing dimension in data_frame_dict"], data_frame_dict, {}, None
+        
+        pk = self.registry.get_target_primary_key(dimension)
+        if pk is None or self.repository is None:   
+            return False, ["OrphanLookUp: missing pk or repository"], data_frame_dict, {}, None
+        
+        repository = self.registry.get_repository(dimension)
+        if repository is None:
+            return False, [f"OrphanLookUp: no repository found for dimension '{dimension}'"], data_frame_dict, {}, None
+        
+        pk_values = set(df[pk])
+        existing_ids = repository.get_existing_ids(pk_values)
+        
+        if(existing_ids is None):
+            return False, ["OrphanLookUp: failed to retrieve existing ids from repository"], data_frame_dict, {}, None
+        
+        orphan_ids = pk_values - existing_ids
+        orphan_df = df[df[pk].isin(orphan_ids)]
+        
+        metrics = {
+            "total_records": len(df),
+            "orphan_count": len(orphan_df),
+            "passed_count": len(df) - len(orphan_df),
+        }
+        errors = []
+        for orphan_id in orphan_ids:
+            errors.append(f"OrphanLookUp: record with {pk}={orphan_id} does not exist in repository")
+        
+        return True, errors, data_frame_dict, metrics, orphan_df
+        
