@@ -204,48 +204,48 @@ class BaseRepository(Generic[T]):
             )
             return False
         
-def get_columns(self, columns: list[str]) -> list[tuple]:
-    """
-    Retrieves only specific columns from the table.
-    
-    Example:
-        repo.get_columns(["agent_id", "agent_name", "is_active"])
-    """
-    method = "get_columns"
-    if not columns:
-        return []
-    try:
-        col_clause = ", ".join(columns)
-        sql  = f"SELECT {col_clause} FROM {self.__table__}"
-        return self._db.execute(sql)
-    except Exception as e:
-        log_error(_logger, self._audit,
-            f"{self._ctx(method)} Failed to fetch columns from {self.__table__} | "
-            f"Reason: Query execution failed | "
-            f"columns={columns} | Raw error: {e}"
-        )
-        return []
+    def get_columns(self, columns: list[str]) -> list[tuple]:
+        """
+        Retrieves only specific columns from the table.
+        
+        Example:
+            repo.get_columns(["agent_id", "agent_name", "is_active"])
+        """
+        method = "get_columns"
+        if not columns:
+            return []
+        try:
+            col_clause = ", ".join(columns)
+            sql  = f"SELECT {col_clause} FROM {self.__table__}"
+            return self._db.execute(sql)
+        except Exception as e:
+            log_error(_logger, self._audit,
+                f"{self._ctx(method)} Failed to fetch columns from {self.__table__} | "
+                f"Reason: Query execution failed | "
+                f"columns={columns} | Raw error: {e}"
+            )
+            return []
 
-def delete_by_filters(self, **filters) -> bool:
-    """
-    Deletes rows matching ALL supplied filter conditions.
-    Filters are combined with AND.
+    def delete_by_filters(self, **filters) -> bool:
+        """
+        Deletes rows matching ALL supplied filter conditions.
+        Filters are combined with AND.
 
-    Example:
-        repo.delete_by_filters(is_active=False, team_id=10)
-    """
-    method = "delete_by_filters"
-    if not filters:
-        return False
-    try:
-        where_clause = " AND ".join([f"{k} = %s" for k in filters.keys()])
-        sql  = f"DELETE FROM {self.__table__} WHERE {where_clause}"
-        self._db.execute(sql, tuple(filters.values()))
-        return True
-    except Exception as e:
-        log_error(_logger, self._audit,
-            f"{self._ctx(method)} Failed to delete records from {self.__table__} | "
-            f"Reason: DELETE statement rejected by Snowflake | "
-            f"filters={filters} | Raw error: {e}"
-        )
-        return False
+        Example:
+            repo.delete_by_filters(is_active=False, team_id=10)
+        """
+        method = "delete_by_filters"
+        if not filters:
+            return False
+        try:
+            where_clause = " AND ".join([f"{k} = %s" for k in filters.keys()])
+            sql  = f"DELETE FROM {self.__table__} WHERE {where_clause}"
+            self._db.execute(sql, tuple(filters.values()))
+            return True
+        except Exception as e:
+            log_error(_logger, self._audit,
+                f"{self._ctx(method)} Failed to delete records from {self.__table__} | "
+                f"Reason: DELETE statement rejected by Snowflake | "
+                f"filters={filters} | Raw error: {e}"
+            )
+            return False

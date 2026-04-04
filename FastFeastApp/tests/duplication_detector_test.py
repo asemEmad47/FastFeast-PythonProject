@@ -35,3 +35,10 @@ if __name__ == "__main__":
         "signup_date": ["2022-09-25", "2022-10-03", "2021-07-12"],
         "gender": ["male", "female", "male"]
     })
+    db = DatabaseManager()
+
+    for table_key in 
+        registry.register_repository(
+            table_key,
+            BaseRepository(db,registry, table_key, audit)
+        )

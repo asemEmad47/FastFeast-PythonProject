@@ -55,14 +55,15 @@ class ValidatorComponent(DataFlowComponent):
         
         # Stage 2: Rows Validation
         self._validator.set_validator(self._validations.get("rows"))
-        success, stage_errors, clean_df, stats = self._validator.validate(df, model, required)
-        self.audit.track_metrics(stats) 
-        
-        if not success:
-            return False, stage_errors, data_frame_dict, stats, None
-        
+        success, row_errors, clean_df, stats = self._validator.validate(df, model, required)
+
+        error_messages = [e["reason"] for e in row_errors]
+        bad_rows_df    = pd.DataFrame([e["row"] for e in row_errors], columns=["raw_row"])
+
+        self.audit.track_metrics(stats)
+
         data_frame_dict["dataframe"] = clean_df
-        return True, stage_errors, data_frame_dict, stats, None
+        return True, error_messages, data_frame_dict, stats, bad_rows_df
     
     def register_validations(self, validations: dict[str, Validator]) -> None:
         for name, validator in validations.items():
