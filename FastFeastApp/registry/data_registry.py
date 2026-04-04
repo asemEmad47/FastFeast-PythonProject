@@ -442,3 +442,11 @@ class DataRegistry:
 
     def get_archive_dir_stream(self) -> str:
         return self._parser.get_archive_dir_stream(self._conf.get("batch", {})) or ""
+    
+    def get_orphan_table_name(self) -> str:
+        conf = self.get_table_conf("OrphanRecords")
+        return self._parser.get_target_table_name(conf) or ""
+
+    def get_quarantine_table_name(self) -> str:
+        conf = self.get_table_conf("RejectedRecords")
+        return self._parser.get_target_table_name(conf) or ""
