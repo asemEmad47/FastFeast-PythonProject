@@ -16,17 +16,17 @@ class OrphanLookUp(LookUp):
         if df is None:
             return False, ["OrphanLookUp: missing dataframe"], data_frame_dict, {}, None
         
-        dimension = data_frame_dict['dimension']
-        if dimension is None:
-            return False, ["OrphanLookUp: missing dimension in data_frame_dict"], data_frame_dict, {}, None
-        
-        pk = self.registry.get_target_primary_key(dimension)
+        orphan_table = self.registry.get_orphan_table_name()
+        if not orphan_table:
+            return False, ["OrphanLookUp: orphan table name not found in registry"], data_frame_dict, {}, None
+
+        pk = self.registry.get_target_primary_key(orphan_table)
         if pk is None or self.repository is None:   
             return False, ["OrphanLookUp: missing pk or repository"], data_frame_dict, {}, None
         
-        repository = self.registry.get_repository(dimension)
+        repository = self.registry.get_repository(orphan_table)
         if repository is None:
-            return False, [f"OrphanLookUp: no repository found for dimension '{dimension}'"], data_frame_dict, {}, None
+            return False, [f"OrphanLookUp: no repository found for dimension '{orphan_table}'"], data_frame_dict, {}, None
         
         pk_values = set(df[pk])
         existing_ids = repository.get_existing_ids(pk_values)
