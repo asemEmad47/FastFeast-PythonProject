@@ -226,6 +226,27 @@ class BaseRepository(Generic[T]):
             )
             return []
 
+    def get_columns_by_ids(self, columns: list[str], ids: set) -> list[tuple]:
+        method = "get_columns_by_ids"
+        if not columns:
+            return []
+        if not ids:
+            return []
+        try:
+            col_clause   = ", ".join(columns)
+            placeholders = ", ".join(["%s"] * len(ids))
+            sql = (
+                f"SELECT {col_clause} FROM {self._full_table_name()} "
+                f"WHERE {self.__pk__} IN ({placeholders})"
+            )
+            return self._db.execute(sql, tuple(ids))
+        except Exception as e:
+            log_error(_logger, self._audit,
+                f"{self._ctx(method)} Failed to fetch columns by ids from {self._full_table_name()} | "
+                f"Reason: Query execution failed | "
+                f"columns={columns} | ids_count={len(ids)} | Raw error: {e}"
+            )
+            return None
     def delete_by_filters(self, **filters) -> bool:
         """
         Deletes rows matching ALL supplied filter conditions.
