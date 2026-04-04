@@ -11,7 +11,7 @@ import pandas as pd
 from etl.components.data_flow_component import DataFlowComponent
 from audit.audit import Audit
 from registry.data_registry import DataRegistry
-from config.settings import QUARANTINE_DIR
+# from config.settings import QUARANTINE_DIR
 
 
 class QuarantineWriter(DataFlowComponent):
@@ -30,17 +30,17 @@ class QuarantineWriter(DataFlowComponent):
             bad_rows = None   # reset after writing
         return True, [], data_frame_dict, metrics_dict, bad_rows
 
-    def _flush(self, df: pd.DataFrame, reason: str) -> None:
-        """Write bad rows to quarantine directory as CSV."""
-        try:
-            os.makedirs(QUARANTINE_DIR, exist_ok=True)
-            path = os.path.join(QUARANTINE_DIR, f"{reason}_{uuid.uuid4().hex}.csv")
-            out  = df.copy()
-            out["_quarantine_reason"] = reason
-            out.to_csv(path, index=False)
-            self.audit.track_metrics("quarantine", {
-                "quarantined_count": len(out),
-                "reason": reason,
-            })
-        except Exception as exc:
-            self.audit.log_failure(f"QuarantineWriter failed: {exc}")
+    # def _flush(self, df: pd.DataFrame, reason: str) -> None:
+    #     """Write bad rows to quarantine directory as CSV."""
+    #     try:
+    #         os.makedirs(QUARANTINE_DIR, exist_ok=True)
+    #         path = os.path.join(QUARANTINE_DIR, f"{reason}_{uuid.uuid4().hex}.csv")
+    #         out  = df.copy()
+    #         out["_quarantine_reason"] = reason
+    #         out.to_csv(path, index=False)
+    #         self.audit.track_metrics("quarantine", {
+    #             "quarantined_count": len(out),
+    #             "reason": reason,
+    #         })
+    #     except Exception as exc:
+    #         self.audit.log_failure(f"QuarantineWriter failed: {exc}")

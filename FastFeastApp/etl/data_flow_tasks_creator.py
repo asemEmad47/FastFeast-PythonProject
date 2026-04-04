@@ -8,8 +8,6 @@ batch_mode = "micro_batch" → fact tables      (FactTickets)
 Called once per DWH table by WorkFlow.orchestrate().
 """
 from __future__ import annotations
-from registry.conf_file_parser import ConfFileParser
-from registry.data_registry    import DataRegistry
 from audit.audit               import Audit
 
 from etl.data_flow_task                         import DataFlowTask
@@ -103,18 +101,17 @@ class DataFlowTasksCreator:
         
 
         # Read
-        chain.append(
-            ReadFromSourceFactory.create_source(
-                file_name=file_path,
-                registry=self.registry,
-                parser=self.parser,
-            )
-        )
+        # chain.append(
+        #     ReadFromSourceFactory.create_source(
+        #         file_name=file_path,
+        #         registry=self.registry,
+        #         parser=self.parser,
+        #     )
+        # )
 
         # Validate
         chain.append(
             ValidatorComponent(
-                table_conf=file_conf,
                 audit=self.audit,
                 registry=self.registry,
             )
@@ -123,7 +120,7 @@ class DataFlowTasksCreator:
         # PII
         pii_fields = self.registry.get_pii_columns(file_key)
         if pii_fields:
-            chain.append(PIIMask(pii_fields=pii_fields, audit=self.audit))
+            chain.append(PIIMask(self.audit,self.registry))
 
         # Quarantine
         chain.append(QuarantineWriter(audit=self.audit))
@@ -136,7 +133,6 @@ class DataFlowTasksCreator:
         join_configs = self.registry.get_join_config(table_key)
 
         return Join(
-            join_configs=join_configs,
             audit=self.audit,
             registry=self.registry,
             )
@@ -151,7 +147,7 @@ class DataFlowTasksCreator:
 
         # 1. Transformer
         components.append(
-            Transformer(table_conf=table_conf, audit=self.audit)
+            Transformer( self.audit , self.registry)
         )
 
         # 2. OrphansHandler (always for both modes)
