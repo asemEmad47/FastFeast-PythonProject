@@ -20,7 +20,7 @@ from etl.components.join                        import Join
 from etl.components.load_to_target              import LoadToTarget
 from etl.lookup.orphans_handler                 import OrphansHandler
 from etl.lookup.duplicates_lookup               import DuplicatesLookUp
-from etl.lookup.orphan_lookup                import OrphanLookUp
+from etl.lookup.orphan_lookup                    import OrphanLookUp
 
 #from etl.scd.scd_component                     import SCDComponent
 
@@ -31,8 +31,7 @@ from etl.lookup.orphan_lookup                import OrphanLookUp
 
 class DataFlowTasksCreator:
 
-    def __init__(self, parser, registry, audit, sources, files):
-        self.parser = parser
+    def __init__(self,registry, audit, sources, files):
         self.registry = registry
         self.audit = audit
         self.sources = sources
@@ -51,14 +50,30 @@ class DataFlowTasksCreator:
     ) -> DataFlowTask:
 
         # ── Stage 1: dataframe_dicts ─────────────────────────────
-        data_framse_dicts = [
-            {
+        # data_framse_dicts = [
+        #     {
+        #         "dataframe": None,
+        #         "dimension": table_key,
+        #         "source": file_key,
+        #         "file_path": files
+        #     }
+        #     for file_key in active_sources
+        # ]
+
+
+
+        data_framse_dicts = []
+
+        for file_key in active_sources:
+            file_name = self.registry.get_file_name(file_key)
+            file_path = self._resolve_path(file_name)
+
+            data_framse_dicts.append({
                 "dataframe": None,
                 "dimension": table_key,
                 "source": file_key,
-            }
-            for file_key in active_sources
-        ]
+                "file_path": file_path
+            })
 
         # ── Stage 1: before_join_components (DICT) ──────────────
         before_join_components = {}
@@ -85,7 +100,7 @@ class DataFlowTasksCreator:
             after_join_components=after_join_components,
         )
 
-        # 🔥 IMPORTANT
+    
         task.dataframe_dicts = data_framse_dicts
 
         return task
@@ -126,7 +141,7 @@ class DataFlowTasksCreator:
             chain.append(PIIMask(self.audit,self.registry))
 
         # Quarantine
-        chain.append(QuarantineWriter(audit=self.audit))
+        chain.append(QuarantineWriter(audit=self.audit)) #add registry here
 
         return chain
     
@@ -159,7 +174,7 @@ class DataFlowTasksCreator:
         if foreign_keys:
             components.append(
                 OrphansHandler(
-                    foreign_keys=foreign_keys,
+                    foreign_keys=foreign_keys, #remove it
                     registry=self.registry,
                     audit=self.audit,
                 )
@@ -168,8 +183,8 @@ class DataFlowTasksCreator:
         # 3. Deduplicates
         components.append(
             DuplicatesLookUp(
-                primary_key=primary_key,
-                table_key=table_key,
+                primary_key=primary_key, ##remove it
+                table_key=table_key, ##remove it
                 registry=self.registry,
                 audit=self.audit,
             )
@@ -180,15 +195,15 @@ class DataFlowTasksCreator:
 
         components.append(
             LoadToTarget(
-                source=table_key,
-                repo=repo,
+                source=table_key, ##remove it
+                repo=repo, #remove it
                 registry=self.registry,
                 audit=self.audit,
-                pk_column=primary_key,
+                pk_column=primary_key,#remove it
             )
         )
 
-        # 5. 🔥 OrphanLookUp ONLY for microbatch
+        # 5.  OrphanLookUp ONLY for microbatch
         if batch_mode in ["micro_batch", "microbatch"] and foreign_keys:
 
             for fk_column, fk_conf in foreign_keys.items():
@@ -198,9 +213,9 @@ class DataFlowTasksCreator:
 
                 components.append(
                     OrphanLookUp(
-                        fk_column=fk_column,
-                        dim_table=dim_table,
-                        pk_column=pk_column,
+                        fk_column=fk_column,#remove it
+                        dim_table=dim_table,#remove it
+                        pk_column=pk_column,#remove it
                         registry=self.registry,
                         audit=self.audit,
                     )

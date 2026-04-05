@@ -76,7 +76,7 @@ print("ERRORS:", errors)
 ################### MAI #############################
 #####################################################
 
-'''
+
 import sys, os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -105,8 +105,10 @@ registry.load_config(pipeline_file)
 
 # Simulate the files present in this run
 fake_files = [
-    "../../../FastFeast-Data/scripts/data/input/batch/2026-02-20/agents.csv",
-    "../../../FastFeast-Data/scripts/data/input/batch/2026-02-20/teams.csv",
+    ".../agents.csv",
+    ".../teams.csv",
+    ".../customers.csv",
+    ".../segments.csv",
 ]
 
 # ── 3. Build the creator ───────────────────────────────────────────────
@@ -122,9 +124,9 @@ for table_key in all_tables:
     sources = registry.get_target_source(table_key)
 
     creator = DataFlowTasksCreator(
-        parser=parser,
         registry=registry,
         audit=None,
+        sources= sources,
         files=fake_files,
     )
 
@@ -133,6 +135,7 @@ for table_key in all_tables:
         table_key=table_key,
         table_conf=table_conf,
         active_sources=sources,
+        files=fake_files
 
 
 
@@ -154,39 +157,8 @@ for table_key in all_tables:
     for c in task.after_join_components:
         print(type(c).__name__)
 
-'''
-'''
-# ── 5. Inspect the output ──────────────────────────────────────────────
-print("=" * 55)
-print(f"  DataFlowTask for: {table_key}")
-print("=" * 55)
 
-print("\n── data_framse_dicts ─────────────────────────────────")
-for d in task.data_framse_dicts:
-    print(f"  source={d['source']!r:20}  dimension={d['dimension']!r}  dataframe={d['dataframe']}")
 
-print("\n── before_join_components ────────────────────────────")
-for filename, chain in task.before_join_components.items():
-    names = [type(c).__name__ for c in chain]
-    print(f"  {filename!r:20} → {names}")
-
-print("\n── join_task ─────────────────────────────────────────")
-if task.join_task is None:
-    print("  None (single source — no join needed)")
-else:
-    print(f"  {type(task.join_task).__name__}")
-    for cfg in task.join_task.join_configs:
-        print(f"    {cfg}")
-
-print("\n── after_join_components ─────────────────────────────")
-for c in task.after_join_components:
-    print(f"  {type(c).__name__}")
-
-print("\n── LoadToTarget always last? ─────────────────────────")
-print(f"  {isinstance(task.after_join_components[-1], LoadToTarget)}  (expected: True)")
-
-print("=" * 55)
-'''
 ######################################################
 ########### Workflow Test#############################
 ######################################################

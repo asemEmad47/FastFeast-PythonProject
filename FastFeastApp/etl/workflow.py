@@ -25,15 +25,15 @@ from __future__ import annotations
 import threading
 
 from audit.audit                        import Audit
-from etl.tasks.email_task                   import EmailTask
+from etl.tasks.email_task               import EmailTask
 from registry.data_registry             import DataRegistry
-from registry.conf_file_parser             import ConfFileParser
 from utils.file_tracker                 import FileTracker
 from validation.validator_context       import ValidatorContext
 from etl.data_flow_tasks_creator        import DataFlowTasksCreator
 from etl.data_flow_task import DataFlowTask
 from etl.task import Task
-
+#to do list
+# pass path of files which we will process them only
 class WorkFlow(Task):
 
     batch_mode: str
@@ -42,7 +42,7 @@ class WorkFlow(Task):
     audit: Audit
     data_flow_task: DataFlowTask
     alerter: EmailTask
-    parser: ConfFileParser
+    
 
     def __init__(
         self,
@@ -51,7 +51,7 @@ class WorkFlow(Task):
         audit: Audit,
         alerter: EmailTask,
         validator: ValidatorContext,
-        parser: ConfFileParser
+        
 
     ) -> None:
         self.batch_mode = batch_mode
@@ -60,7 +60,7 @@ class WorkFlow(Task):
         self.alerter = alerter
         self.validator = validator
         self.data_flow_task = None
-        self.parser = parser
+        
 
     def orchestrate(self, files: list[str]) -> None:
 
@@ -86,7 +86,7 @@ class WorkFlow(Task):
         print(flat_unique_list)
 
         creator = DataFlowTasksCreator(
-            parser=self.parser,
+        
             registry=self.registry,
             audit=self.audit,
             sources=flat_unique_list,
