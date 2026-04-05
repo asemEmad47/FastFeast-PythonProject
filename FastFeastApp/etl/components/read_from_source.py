@@ -1,10 +1,16 @@
 from abc import ABC, abstractmethod
 import pandas as pd
 from typing import Optional
+from etl.components.data_flow_component import DataFlowComponent
+from audit.audit import Audit
+from registry.data_registry import DataRegistry
 
-class ReadFromSource(ABC):
+class ReadFromSource(DataFlowComponent, ABC):
 
-    def do_task(self,data_frame_dict: dict,) -> tuple[bool, list[str], dict, dict, Optional[pd.DataFrame]]:
+    def __init__(self, audit: Audit, registry: DataRegistry = None):
+        super().__init__(audit=audit, registry=registry)
+
+    def do_task(self, data_frame_dict: dict) -> tuple[bool, list[str], dict, dict, Optional[pd.DataFrame]]:
         metrics_dict = {
             "total_in_records": 0,
             "passed_records": 0,
@@ -17,10 +23,10 @@ class ReadFromSource(ABC):
         bad_rows: Optional[pd.DataFrame] = None
 
         try:
-            file_path = data_frame_dict.get("source")
+            file_path = data_frame_dict.get("file_path")
 
             if not file_path:
-                print("Missing 'source' in data_frame_dict")
+                print("Missing 'file_path' in data_frame_dict")
                 return False, [], data_frame_dict, metrics_dict, bad_rows
             
             df = self._read(file_path)
@@ -28,7 +34,11 @@ class ReadFromSource(ABC):
             metrics_dict["total_in_records"] = len(df)
             metrics_dict["passed_records"] = len(df)
 
-            data_frame_dict["dataframe"] = df
+            data_frame_dict = {
+                "dataframe": df,
+                "dimension": data_frame_dict.get("dimension"),
+                "source": data_frame_dict.get("source"),
+            }
 
             return True, [], data_frame_dict, metrics_dict, bad_rows
         
