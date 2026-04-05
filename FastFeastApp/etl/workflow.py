@@ -26,111 +26,91 @@ import threading
 
 from audit.audit                        import Audit
 from etl.tasks.email_task                   import EmailTask
-from registry.conf_file_parser          import ConfFileParser
 from registry.data_registry             import DataRegistry
-from utils.file_tracker                 import FileTracker
-from validation.validator_context       import ValidatorContext
-from etl.data_flow_tasks_creator        import DataFlowTasksCreator
+from registry.conf_file_parser             import ConfFileParser
+from FastFeastApp.utils.file_tracker                 import FileTracker
+from FastFeastApp.validation.validator_context       import ValidatorContext
+from FastFeastApp.etl.data_flow_tasks_creator        import DataFlowTasksCreator
+from FastFeastApp.etl.data_flow_task import DataFlowTask
+from task import Task
 
+class WorkFlow():
 
-class WorkFlow:
+    batch_mode: str
+    validator: ValidatorContext
+    registry: DataRegistry
+    audit: Audit
+    data_flow_task: "DataFlowTask"
+    alerter: EmailTask
+    parser: ConfFileParser
 
-    def __init__(self) -> None:
-        self.batch_mode:     str            = ""
-        self.registry:       DataRegistry   = None
-        self.parser:         ConfFileParser = None
-        self.audit:          Audit          = None
-        self.alerter:        EmailTask      = None
-        self.file_tracker:   FileTracker    = None
-        self.validator:      ValidatorContext = None
+    def __init__(
+        self,
+        batch_mode: str,
+        registry: DataRegistry,
+        audit: Audit,
+        alerter: EmailTask,
+        validator: ValidatorContext,
+        parser: ConfFileParser
 
-        # Single DataFlowTask — rebuilt per table inside orchestrate()
+    ) -> None:
+        self.batch_mode = batch_mode
+        self.registry = registry
+        self.audit = audit
+        self.alerter = alerter
+        self.validator = validator
         self.data_flow_task = None
-
-    # ══════════════════════════════════════════════════════════════════
-    # PUBLIC
-    # ══════════════════════════════════════════════════════════════════
+        self.parser = parser
 
     def orchestrate(self, files: list[str]) -> None:
-        """
-        Entry point called by Batch or MicroBatch with the list of
-        file paths to process in this run.
-        """
-        self.audit.reset()
-        self.audit.start_timer()
 
-        creator    = DataFlowTasksCreator(
-            parser   = self.parser,
-            registry = self.registry,
-            audit    = self.audit,
-            files    = files,
+        creator = DataFlowTasksCreator(
+            parser=self.parser,
+            registry=self.registry,
+            audit=self.audit,
+            files=files,
         )
 
-        all_tables = self.parser.get_all_tables_conf()
-
+        all_tables = self.registry.get_all_tables_conf()
         for table_key, table_conf in all_tables.items():
-
-            # Skip generated tables (e.g. DateDim — no source files)
             if table_conf.get("generated"):
                 continue
 
-            sources: list[str] = self.parser.get_target_source(table_conf) or []
-
-            # Only process tables whose source files are in this run
+            sources = self.registry.get_target_source(table_key) or []
             active_sources = [
                 s for s in sources
                 if self._file_in_run(s, files)
+                and not self._is_static_and_processed(s)
             ]
             if not active_sources:
                 continue
 
-            # Build and run one DataFlowTask per DWH table
+            # print(active_sources)
+
             self.data_flow_task = creator.create_data_flow_task(
-                batch_mode     = self.batch_mode,
-                table_key      = table_key,
-                table_conf     = table_conf,
-                active_sources = active_sources,
+                batch_mode=self.batch_mode,
+                table_key=table_key,
+                table_conf=table_conf,
+                active_sources=active_sources,
             )
 
             ok, errors = self.data_flow_task.do_task()
 
-            if not ok:
-                self.trigger_alert(
-                    f"Pipeline failed [{table_key}]: {errors}"
-                )
-
-        # ── Post-run ───────────────────────────────────────────────────
-        self.file_tracker.mark_processed(files)
-        self.file_tracker.move_files_to_archive(files)
-
-        run_log_repo = self.registry.get_repository("RunLogRepo")
-        self.audit.persist_to_dwh(run_log_repo)
-        self.audit.log_success("Pipeline run completed")
-
-    # ══════════════════════════════════════════════════════════════════
-    # ALERT
-    # ══════════════════════════════════════════════════════════════════
-
+    # ────────────── Alert ──────────────
     def trigger_alert(self, message: str) -> None:
-        """
-        Log failure immediately.
-        Send email notification on a daemon thread — never blocks the pipeline.
-        """
-        self.audit.log_failure(message)
-        t = threading.Thread(
-            target = self.alerter.do_task,
-            args   = (message,),
-            daemon = True,
-        )
-        t.start()
+        pass
 
-    # ══════════════════════════════════════════════════════════════════
-    # HELPER
-    # ══════════════════════════════════════════════════════════════════
-
+    # ────────────── Helper ──────────────
     def _file_in_run(self, file_key: str, files: list[str]) -> bool:
-        """Check if the file for this file_key is present in the current run."""
         file_name = self.registry.get_file_name(file_key)
         if not file_name:
             return False
         return any(f.endswith(file_name) for f in files)
+
+    def _is_static_and_processed(self, file_key: str) -> bool:
+        file_type = self.registry.get_file_type(file_key)
+
+        if file_type == "static":
+            return True
+
+        return False

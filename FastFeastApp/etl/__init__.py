@@ -76,7 +76,7 @@ print("ERRORS:", errors)
 ################### MAI #############################
 #####################################################
 
-
+'''
 import sys, os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -154,7 +154,7 @@ for table_key in all_tables:
     for c in task.after_join_components:
         print(type(c).__name__)
 
-
+'''
 '''
 # ── 5. Inspect the output ──────────────────────────────────────────────
 print("=" * 55)
@@ -187,7 +187,35 @@ print(f"  {isinstance(task.after_join_components[-1], LoadToTarget)}  (expected:
 
 print("=" * 55)
 '''
+import sys
+import os
+from pathlib import Path
 
+# add project root to sys.path
+sys.path.append(str(Path(__file__).parents[1]))
 
+from registry.conf_file_parser import ConfFileParser
+from registry.data_registry import DataRegistry
+from etl.workflow import WorkFlow
 
+base_dir = os.path.dirname(__file__)
+pipeline_file = os.path.abspath(os.path.join(base_dir, "..", "conf", "pipeline.yaml"))
 
+# Initialize parser + registry
+parser = ConfFileParser()
+registry = DataRegistry(parser)
+registry.load_config(pipeline_file)
+workFlow = WorkFlow("batch", registry)
+
+files = [
+    "C:/data/customers.csv",
+    "C:/data/agents.csv",
+    "C:/data/orders.json",
+    "C:/data/tickets.csv",
+    "C:/data/ticket_events.json",
+    "C:/data/drivers.csv",
+    "C:/data/segments.csv",
+    "C:/data/teams.csv",
+]
+
+workFlow.orchestrate(files)
