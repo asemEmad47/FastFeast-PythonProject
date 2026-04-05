@@ -24,13 +24,18 @@ from etl.lookup.orphan_lookup                import OrphanLookUp
 
 #from etl.scd.scd_component                     import SCDComponent
 
+##### To-do list:
+##### 1- add file paths to dictionary
+##### 2- Replace parser with registry to use functions from registry class & remove the parser
+##### 3- Foriegn keys
 
 class DataFlowTasksCreator:
 
-    def __init__(self, parser, registry, audit, files):
+    def __init__(self, parser, registry, audit, sources, files):
         self.parser = parser
         self.registry = registry
         self.audit = audit
+        self.sources = sources
         self.files = files
 
     # ═══════════════════════════════════════════════════════════════
@@ -42,6 +47,7 @@ class DataFlowTasksCreator:
         table_key: str,
         table_conf: dict,
         active_sources: list[str],
+        files: list[str]
     ) -> DataFlowTask:
 
         # ── Stage 1: dataframe_dicts ─────────────────────────────
@@ -100,14 +106,11 @@ class DataFlowTasksCreator:
         chain = []
         
 
-        # Read
-        # chain.append(
-        #     ReadFromSourceFactory.create_source(
-        #         file_name=file_path,
-        #         registry=self.registry,
-        #         parser=self.parser,
-        #     )
-        # )
+        chain.append(
+            ReadFromSourceFactory.create_source(
+                file_name=file_path,
+            )
+        )
 
         # Validate
         chain.append(

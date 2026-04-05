@@ -27,8 +27,12 @@ Stage 3 — after_join: Transformer → Orphans → Dedup → SCD → LoadToTarg
 from __future__ import annotations
 from typing import Optional
 import pandas as pd
+from etl.task import Task
 
-class DataFlowTask():
+##### To-do list:
+##### move dictionary to registry
+
+class DataFlowTask(Task):
 
     def __init__(
         self,
@@ -86,7 +90,6 @@ class DataFlowTask():
                 self.audit.log_failure(f"Join failed: {errors}")
                 return False, all_errors
 
-            # replace with joined result(s)
             dataframe_dicts = result_dicts
 
        # ── Stage 3: after-join ───────────────────────────────────────

@@ -187,6 +187,10 @@ print(f"  {isinstance(task.after_join_components[-1], LoadToTarget)}  (expected:
 
 print("=" * 55)
 '''
+######################################################
+########### Workflow Test#############################
+######################################################
+'''
 import sys
 import os
 from pathlib import Path
@@ -219,3 +223,4 @@ files = [
 ]
 
 workFlow.orchestrate(files)
+ '''

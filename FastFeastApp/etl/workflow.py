@@ -28,19 +28,19 @@ from audit.audit                        import Audit
 from etl.tasks.email_task                   import EmailTask
 from registry.data_registry             import DataRegistry
 from registry.conf_file_parser             import ConfFileParser
-from FastFeastApp.utils.file_tracker                 import FileTracker
-from FastFeastApp.validation.validator_context       import ValidatorContext
-from FastFeastApp.etl.data_flow_tasks_creator        import DataFlowTasksCreator
-from FastFeastApp.etl.data_flow_task import DataFlowTask
-from task import Task
+from utils.file_tracker                 import FileTracker
+from validation.validator_context       import ValidatorContext
+from etl.data_flow_tasks_creator        import DataFlowTasksCreator
+from etl.data_flow_task import DataFlowTask
+from etl.task import Task
 
-class WorkFlow():
+class WorkFlow(Task):
 
     batch_mode: str
     validator: ValidatorContext
     registry: DataRegistry
     audit: Audit
-    data_flow_task: "DataFlowTask"
+    data_flow_task: DataFlowTask
     alerter: EmailTask
     parser: ConfFileParser
 
@@ -64,14 +64,9 @@ class WorkFlow():
 
     def orchestrate(self, files: list[str]) -> None:
 
-        creator = DataFlowTasksCreator(
-            parser=self.parser,
-            registry=self.registry,
-            audit=self.audit,
-            files=files,
-        )
-
+        all_active_sources = []
         all_tables = self.registry.get_all_tables_conf()
+        
         for table_key, table_conf in all_tables.items():
             if table_conf.get("generated"):
                 continue
@@ -85,16 +80,28 @@ class WorkFlow():
             if not active_sources:
                 continue
 
-            # print(active_sources)
+            all_active_sources.append(active_sources)
 
-            self.data_flow_task = creator.create_data_flow_task(
-                batch_mode=self.batch_mode,
-                table_key=table_key,
-                table_conf=table_conf,
-                active_sources=active_sources,
-            )
+        flat_unique_list = list({item for sublist in all_active_sources for item in sublist})
+        print(flat_unique_list)
 
-            ok, errors = self.data_flow_task.do_task()
+        creator = DataFlowTasksCreator(
+            parser=self.parser,
+            registry=self.registry,
+            audit=self.audit,
+            sources=flat_unique_list,
+            files=files
+        )
+
+        self.data_flow_task = creator.create_data_flow_task(
+            batch_mode=self.batch_mode,
+            table_key=table_key,
+            table_conf=table_conf,
+            active_sources=flat_unique_list,
+            file_paths=files
+        )
+
+        ok, errors = self.data_flow_task.do_task()
 
     # ────────────── Alert ──────────────
     def trigger_alert(self, message: str) -> None:
