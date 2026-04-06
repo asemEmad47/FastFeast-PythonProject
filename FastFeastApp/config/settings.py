@@ -3,9 +3,9 @@ settings.py — All environment-level constants in one place.
 Override with environment variables in production via .env file.
 """
 import os
-from dotenv import load_dotenv
+#from dotenv import load_dotenv
 
-load_dotenv()
+#load_dotenv()
 
 # ============================================================
 # DATABASE SETTINGS

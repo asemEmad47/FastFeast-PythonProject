@@ -156,6 +156,7 @@ class DataRegistry:
                 # First assignment wins to avoid accidental overwrite
                 if file_key not in self._file_key_to_table:
                     self._file_key_to_table[file_key] = table_key
+    
  
     # ══════════════════════════════════════════════════════════════════
     # Bootstrap: register repositories  (called once at pipeline startup)

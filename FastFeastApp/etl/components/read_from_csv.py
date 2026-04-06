@@ -5,7 +5,7 @@ Sets total_in_records in metrics.
 """
 from __future__ import annotations
 import pandas as pd
-from FastFeastApp.etl.components.read_from_source import ReadFromSource
+from etl.components.read_from_source import ReadFromSource
 
 class ReadFromCSV(ReadFromSource):
 

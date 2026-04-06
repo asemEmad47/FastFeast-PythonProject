@@ -2,8 +2,8 @@
 ReadFromSourceFactory — Factory Pattern.
 Inspects file extension → returns ReadFromCSV or ReadFromJSON.
 """
-from FastFeastApp.etl.components.read_from_csv  import ReadFromCSV
-from FastFeastApp.etl.components.read_from_json import ReadFromJSON
+from etl.components.read_from_csv import ReadFromCSV
+from etl.components.read_from_json import ReadFromJSON
 
 
 class ReadFromSourceFactory:

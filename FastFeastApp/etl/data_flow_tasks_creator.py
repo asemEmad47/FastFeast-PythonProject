@@ -8,8 +8,6 @@ batch_mode = "micro_batch" → fact tables      (FactTickets)
 Called once per DWH table by WorkFlow.orchestrate().
 """
 from __future__ import annotations
-from registry.conf_file_parser import ConfFileParser
-from registry.data_registry    import DataRegistry
 from audit.audit               import Audit
 
 from etl.data_flow_task                         import DataFlowTask
@@ -22,197 +20,229 @@ from etl.components.join                        import Join
 from etl.components.load_to_target              import LoadToTarget
 from etl.components.orphans_handler                 import OrphansHandler
 from etl.lookup.duplicates_lookup               import DuplicatesLookUp
+from etl.lookup.orphan_lookup                    import OrphanLookUp
 
+#from etl.scd.scd_component                     import SCDComponent
+
+##### To-do list:
+##### 1- add file paths to dictionary
+##### 2- Replace parser with registry to use functions from registry class & remove the parser
+##### 3- Foriegn keys
 
 class DataFlowTasksCreator:
 
-    def __init__(
-        self,
-        parser:   ConfFileParser,
-        registry: DataRegistry,
-        audit:    Audit,
-        files:    list[str],
-    ) -> None:
-        self.parser   = parser
+    def __init__(self,registry, audit, data):
         self.registry = registry
-        self.audit    = audit
-        self.files    = files    # full file paths in current run
+        self.audit = audit
+        self.data = data
 
-    # ══════════════════════════════════════════════════════════════════
-    # PUBLIC
-    # ══════════════════════════════════════════════════════════════════
-
+    # ═══════════════════════════════════════════════════════════════
+    # PUBLIC METHOD
+    # ═══════════════════════════════════════════════════════════════
     def create_data_flow_task(
         self,
         batch_mode: str,
-        table_key:  str,
-        table_conf: dict,
-        active_sources: list[str],
+        matched_data: list
     ) -> DataFlowTask:
-        """
-        Build and return a DataFlowTask for the given table.
 
-        batch_mode : "batch" or "micro_batch"
-        table_key  : yaml tables key  e.g. "AgentsDim", "FactTickets"
-        table_conf : full config block from pipeline.yaml
-        active_sources: file_keys whose files are present in this run
-        """
+        # ── Stage 1: dataframe_dicts ─────────────────────────────
+        dataframe_dicts = []
+        before_join_components = {}
 
-        # ── Build data_framse_dicts (one per source) ──────────────────
-        data_framse_dicts = []
-        for file_key in active_sources:
-            data_framse_dicts.append({
-                "dataframe": None,
-                "dimension": table_key,
-                "source":    file_key,
-            })
+        for item in matched_data:
+            table_key = item["table"]
+            sources = item["sources"]
+            files = item["files"]
 
-        # ── Stage 1: before_join_components (one chain per source) ────
-        before_join_components = []
-        for file_key in active_sources:
-            chain = self._build_before_join_chain(file_key, table_conf)
-            before_join_components.append(chain)
+            for file_key in sources:
+                file_name = self.registry.get_file_name(file_key)
 
-        # ── Stage 2: join_task (only when multiple sources) ───────────
+                # 🔥 match correct file path
+                file_path = next(
+                    (f for f in files if f.endswith(file_name)),
+                    None
+                )
+
+                dataframe_dicts.append({
+                    "dataframe": None,
+                    "dimension": table_key,
+                    "source": file_key,
+                    "file_path": file_path
+                })
+
+                # build before join per source
+                before_join_components[file_key] = self._build_before_join_chain(file_key,file_path)
+
+        print("DataFrame Dicts:", dataframe_dicts)
+
+        # ── Stage 2: join ───────────────────────────────────────
         join_task = None
-        if len(active_sources) > 1:
-            join_task = self._build_join(table_conf, active_sources)
 
-        # ── Stage 3: after_join_components ────────────────────────────
-        after_join_components = self._build_after_join_components(
-            batch_mode, table_key, table_conf
+        if any(len(item["sources"]) > 1 for item in matched_data):
+            join_task = Join(
+                audit=self.audit,
+                registry=self.registry,
+            )
+
+        # ── Stage 3: after join ─────────────────────────────────
+        after_join_components = {}
+
+        for item in matched_data:
+            table_key = item["table"]
+            table_conf = self.registry.get_table_conf(table_key)
+
+            # build components for this table only
+            components = self._build_after_join_components(
+                batch_mode,
+                table_key,
+                table_conf
+            )
+
+            after_join_components[table_key] = components
+
+        
+        # ── Build Task ──────────────────────────────────────────
+        task = DataFlowTask(
+            audit=self.audit,
+            registry=self.registry,
+            before_join_components=before_join_components,
+            join_task=join_task,
+            after_join_components=after_join_components,
         )
 
-        return DataFlowTask(
-            audit                  = self.audit,
-            registry               = self.registry,
-            data_framse_dicts      = data_framse_dicts,
-            before_join_components = before_join_components,
-            join_task              = join_task,
-            after_join_components  = after_join_components,
-        )
+        task.dataframe_dicts = dataframe_dicts
+        # Print nicely
+        print("\n=== DataFrame Dicts ===")
+        for df in dataframe_dicts:
+            print(f"Dimension: {df['dimension']}, Source: {df['source']}, File: {df['file_path']}")
 
+        print("\n=== Before Join Components ===")
+        for source, chain in before_join_components.items():
+            chain_names = [c.__class__.__name__ for c in chain]
+            print(f"Source: {source} → Chain: {chain_names}")
+
+        print("\n=== Join Task ===")
+        if join_task:
+            print(f"Join task exists: {join_task.__class__.__name__}")
+        else:
+            print("No join task needed")
+
+        print("\n=== After Join Components ===")
+        for table_key, comps in after_join_components.items():
+            comp_names = [c.__class__.__name__ for c in comps]
+            print(f"Table: {table_key} → Components: {comp_names}")
+
+        return task, dataframe_dicts
     # ══════════════════════════════════════════════════════════════════
     # STAGE BUILDERS
     # ══════════════════════════════════════════════════════════════════
-
-    def _build_before_join_chain(
-        self, file_key: str, table_conf: dict
-    ) -> list:
-        """Read → Validate → PIIMask → QuarantineWriter per source file."""
-        file_name = self.registry.get_file_name(file_key)
-        file_path = self._resolve_path(file_name)
-        file_conf = self.parser.get_file_conf(file_key)
+    def _build_before_join_chain(self, file_key: str, file_path: str) -> list:
 
         chain = []
 
         # Read
         chain.append(
-            ReadFromSourceFactory.create_source(file_path, self.registry, self.parser)
+            ReadFromSourceFactory.create_source(
+                file_name=file_path   
+            )
         )
 
         # Validate
         chain.append(
             ValidatorComponent(
-                table_conf = file_conf,
-                audit      = self.audit,
-                registry   = self.registry,
+                audit=self.audit,
+                registry=self.registry,
             )
         )
 
-        # PIIMask — if file has pii_fields
-        pii_fields = file_conf.get("pii_fields", [])
+        # PII
+        pii_fields = self.registry.get_pii_columns(file_key)
         if pii_fields:
-            chain.append(PIIMask(pii_fields=pii_fields, audit=self.audit))
+            chain.append(PIIMask(self.audit, self.registry))
 
-        # QuarantineWriter — flush bad_rows to disk
+        # Quarantine
         chain.append(QuarantineWriter(audit=self.audit))
 
         return chain
+    
 
-    def _build_join(
-        self, table_conf: dict, active_sources: list[str]
-    ) -> Join:
-        """Build Join from pipeline.yaml joins section."""
-        join_defs    = self.parser.get_join_config(table_conf) or []
-        join_configs = []
+    def _build_join(self, table_key: str) -> Join:
 
-        for jd in join_defs:
-            left_ref  = jd.get("left", "")
-            right_ref = jd.get("right", "")
-            join_configs.append({
-                "left_on":   left_ref.split(".")[-1],    # "tickets.order_id" → "order_id"
-                "right_key": right_ref.split(".")[0],    # "orders.order_id"  → "orders"
-                "right_on":  right_ref.split(".")[-1],   # "orders.order_id"  → "order_id"
-                "type":      jd.get("type", "left"),
-            })
+        join_configs = self.registry.get_join_config(table_key)
 
         return Join(
-            join_configs = join_configs,
-            audit        = self.audit,
-            registry     = self.registry,
+            audit=self.audit,
+            registry=self.registry,
+            )
+    
+
+
+    def _build_after_join_components(self, batch_mode, table_key, table_conf):
+
+        components = []
+
+        primary_key = self.registry.get_target_primary_key(table_key)
+
+        # 1. Transformer
+        components.append(
+            Transformer( self.audit , self.registry)
         )
 
-    def _build_after_join_components(
-        self, batch_mode: str, table_key: str, table_conf: dict
-    ) -> list:
-        """
-        Transformer → OrphansHandler → DuplicatesLookUp
-        → SCDComponent (batch only) → LoadToTarget.
-        """
-        components  = []
-        primary_key = self.parser.get_target_primary_key(table_conf)
+        # 2. OrphansHandler (always for both modes)
+        foreign_keys = self.registry.get_target_foreign_keys(table_key)
 
-        # Transform
-        components.append(Transformer(table_conf=table_conf, audit=self.audit))
-
-        # Orphan check
-        foreign_keys = self.parser.get_target_foreign_keys(table_conf)
         if foreign_keys:
             components.append(
                 OrphansHandler(
-                    foreign_keys = foreign_keys,
-                    registry     = self.registry,
-                    audit        = self.audit,
+                    foreign_keys=foreign_keys, #remove it
+                    registry=self.registry,
+                    audit=self.audit,
                 )
             )
 
-        # Dedup
+        # 3. Deduplicates
         components.append(
             DuplicatesLookUp(
-                primary_key = primary_key,
-                table_key   = table_key,
-                registry    = self.registry,
-                audit       = self.audit,
+                primary_key=primary_key, ##remove it
+                table_key=table_key, ##remove it
+                registry=self.registry,
+                audit=self.audit,
             )
         )
 
-        # SCD — only for batch (dimension) mode
-        if batch_mode == "batch":
-            scd_conf = table_conf.get("dimension", {})
-            components.append(
-                SCDComponent(
-                    table_conf = table_conf,
-                    scd_conf   = scd_conf,
-                    registry   = self.registry,
-                    audit      = self.audit,
-                )
-            )
-
-        # Load — always last
+        # 4. Load
         repo = self.registry.get_repository(table_key)
+
         components.append(
             LoadToTarget(
-                source    = table_key,
-                repo      = repo,
-                registry  = self.registry,
-                audit     = self.audit,
-                pk_column = primary_key,
+                source=table_key, ##remove it
+                repo=repo, #remove it
+                registry=self.registry,
+                audit=self.audit,
+                pk_column=primary_key,#remove it
             )
         )
 
-        return components
+        # 5.  OrphanLookUp ONLY for microbatch
+        if batch_mode in ["micro_batch", "microbatch"] and foreign_keys:
 
+            for fk_column, fk_conf in foreign_keys.items():
+
+                dim_table = fk_conf.get("dim_table")
+                pk_column = fk_conf.get("pk_column")
+
+                components.append(
+                    OrphanLookUp(
+                        fk_column=fk_column,#remove it
+                        dim_table=dim_table,#remove it
+                        pk_column=pk_column,#remove it
+                        registry=self.registry,
+                        audit=self.audit,
+                    )
+                )
+
+        return components
+        
     # ══════════════════════════════════════════════════════════════════
     # HELPER
     # ══════════════════════════════════════════════════════════════════
