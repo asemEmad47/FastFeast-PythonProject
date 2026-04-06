@@ -560,7 +560,7 @@ tables:
       - quarantine_id
       - record_payload
       - source_table
-      - source_file
+      - fact_table
       - orphaned_fk_column
       - orphaned_fk_value
       - quarantined_at
