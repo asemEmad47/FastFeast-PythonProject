@@ -1,0 +1,2 @@
+DELETE FROM QUARANTINE.RejectedRecords
+WHERE rejected_at < DATEADD(day, -30, CURRENT_TIMESTAMP());
