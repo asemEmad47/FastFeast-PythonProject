@@ -270,3 +270,20 @@ class BaseRepository(Generic[T]):
                 f"filters={filters} | Raw error: {e}"
             )
             return False
+        
+    def delete_many(self, ids: set) -> bool:
+        method = "delete_many"
+        if not ids:
+            return True
+        try:
+            placeholders = ", ".join(["%s"] * len(ids))
+            sql = f"DELETE FROM {self._full_table_name()} WHERE {self.__pk__} IN ({placeholders})"
+            self._db.execute(sql, tuple(ids))
+            return True
+        except Exception as e:
+            log_error(_logger, self._audit,
+                f"{self._ctx(method)} Failed to delete records from {self._full_table_name()} | "
+                f"Reason: DELETE statement rejected by Snowflake | "
+                f"ids_count={len(ids)} | Raw error: {e}"
+            )
+            return False
