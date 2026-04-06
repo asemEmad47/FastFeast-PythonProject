@@ -1,97 +1,96 @@
-"""""
-DataFlowTask — Runs three sequential stages for one DWH table.
-
-Attributes (per UML):
-  dataframe_dicts : List[dict]               — one dict per source file
-  audit             : Audit
-  registry          : DataRegistry
-  before_join_components : List[DataFlowComponent]
-  join_task         : Join | None
-  after_join_components  : List[DataFlowComponent]
-
-Each data_frame_dict shape:
-  {"dataframe": pd.DataFrame, "dimension": str, "source": str}
-
-metrics_dict is created once and passed by reference through every component.
-
-Stage 1 — before_join: process each source file independently.
-          Each source runs its own Read → Validate → PIIMask chain.
-          Results stored back in dataframe_dicts.
-
-Stage 2 — join: merge all source dfs using dataframe_dicts.
-          Primary source dict flows as the left side.
-
-Stage 3 — after_join: Transformer → Orphans → Dedup → SCD → LoadToTarget.
-          LoadToTarget returns the short (bool, errors, df) tuple — handled separately.
-"""
 from __future__ import annotations
-from typing import Optional
-import pandas as pd
+from audit.audit import Audit
 from etl.task import Task
+from registry.data_registry import DataRegistry
+from etl.components.quarantine_writer import QuarantineWriter
 
 class DataFlowTask(Task):
 
-    def __init__(
-        self,
-        audit ,
-        registry,
-        before_join_components = None,
-        join_task = None,
-        after_join_components = None,
-    ) :
+    def __init__(self, audit : Audit, registry : DataRegistry,   before_join_components=None, join_task=None, after_join_components=None):
         self.audit = audit
         self.registry = registry
         self.before_join_components = before_join_components or {}
         self.join_task = join_task
         self.after_join_components = after_join_components or []
+        self.quarantine_writer = QuarantineWriter(audit=self.audit, registry=self.registry)
 
     # ══════════════════════════════════════════════════════════════════
     # PUBLIC — called by WorkFlow.orchestrate()
     # ══════════════════════════════════════════════════════════════════
-
     def do_task(self, dataframe_dicts) -> tuple[bool, list[str]]:
         all_errors: list[str] = []
 
-        # ── Stage 1: before-join ──────────────────
+        # ── Stage 1: before-join ──────────────────────────────────────
         for i, data_dict in enumerate(dataframe_dicts):
             source = data_dict.get("source")
 
             if not source:
-                self.audit.log_failure("Missing source")
+                self.audit.log_failure("Missing source key in data_dict")
                 continue
 
             chain = self.before_join_components.get(source, [])
 
             if not chain:
-                self.audit.log_failure(f"No components for {source}")
+                self.audit.log_failure(f"No before-join components found for source: {source}")
                 continue
+
+            self.audit.set_file(source) 
+            self.audit.start_timer()  
+            
+            file_ok = True
 
             for comp in chain:
                 print(comp.__class__.__name__)
                 ok, errors, data_dict, metrics, bad_rows = comp.do_task(data_dict)
+                
+                if bad_rows is not None and not bad_rows.empty:
+                    bad_dict = {
+                        "dataframe": bad_rows,
+                        "dimension": data_dict.get("dimension")
+                    }
+                    _, q_errors, _, _, _ = self.quarantine_writer.do_task(bad_dict)
+                    all_errors.extend(q_errors)
+                    
                 all_errors.extend(errors)
 
+                self.audit.track_metrics(metrics)
+
                 if not ok:
-                    self.audit.log_failure(f"Before-join failed [{source}]")
+                    self.audit.log_failure(f"Before-join component failed [{source}]: {errors}")
+                    file_ok = False
                     break
 
             dataframe_dicts[i] = data_dict
-            self.audit.track_metrics(source, metrics)
+
+            # Log end of this file's pipeline
+            # schema_failed=True only if the very first component (Reader) failed
+            self.audit.log_pipeline_end(schema_failed=not file_ok)
 
         # ── Stage 2: join ────────────────────────────────────────────
         if self.join_task and dataframe_dicts:
 
             print(self.join_task.__class__.__name__)
             ok, errors, result_dicts, metrics, bad_rows = self.join_task.do_task(dataframe_dicts)
+            if bad_rows is not None and not bad_rows.empty:
+                bad_dict = {
+                    "dataframe": bad_rows,
+                    "dimension": data_dict.get("dimension")
+                }
+                _, q_errors, _, _, _ = self.quarantine_writer.do_task(bad_dict)
+                all_errors.extend(q_errors)
             all_errors.extend(errors)
 
+            self.audit.set_file("join_stage")
+            self.audit.track_metrics(metrics)
+
             if not ok:
-                self.audit.log_failure(f"Join failed: {errors}")
+                self.audit.log_failure(f"Join stage failed: {errors}")
+                self.audit.log_pipeline_end(schema_failed=True)
                 return False, all_errors
 
             dataframe_dicts = result_dicts
 
-       # ── Stage 3: after-join ───────────────────────────────────────
+        # ── Stage 3: after-join ───────────────────────────────────────
         if not dataframe_dicts:
             return True, all_errors
 
@@ -101,20 +100,37 @@ class DataFlowTask(Task):
 
             comps = self.after_join_components.get(dimension, [])
             if not comps:
-                self.audit.log_failure(f"No after-join components for {dimension}")
+                self.audit.log_failure(f"No after-join components found for dimension: {dimension}")
                 continue
+
+            self.audit.set_file(dimension)
+            self.audit.start_timer()
+
+            dim_ok = True
 
             for comp in comps:
                 print(f"[After-Join] Running: {comp.__class__.__name__} for {dimension}")
 
                 ok, errors, working, metrics, bad_rows = comp.do_task(working)
+                
+                if bad_rows is not None and not bad_rows.empty:
+                    bad_dict = {
+                        "dataframe": bad_rows,
+                        "dimension": data_dict.get("dimension"),
+                    }
+                    _, q_errors, _, _, _ = self.quarantine_writer.do_task(bad_dict)
+                    all_errors.extend(q_errors)
+                    
                 all_errors.extend(errors)
 
+                self.audit.track_metrics(metrics)
+
                 if not ok:
-                    self.audit.log_failure(f"After-join failed [{dimension}]")
-                    break  
+                    self.audit.log_failure(f"After-join component failed [{dimension}]: {errors}")
+                    dim_ok = False
+                    break
 
             dataframe_dicts[i] = working
-            self.audit.track_metrics(dimension, metrics)
+            self.audit.log_pipeline_end(schema_failed=not dim_ok)
 
         return True, all_errors
