@@ -75,7 +75,7 @@ print("ERRORS:", errors)
 #####################################################
 ################### MAI #############################
 #####################################################
-
+'''
 
 import sys, os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -157,12 +157,12 @@ for table_key in all_tables:
     for c in task.after_join_components:
         print(type(c).__name__)
 
-
+'''
 
 ######################################################
 ########### Workflow Test#############################
 ######################################################
-'''
+
 import sys
 import os
 from pathlib import Path
@@ -181,7 +181,7 @@ pipeline_file = os.path.abspath(os.path.join(base_dir, "..", "conf", "pipeline.y
 parser = ConfFileParser()
 registry = DataRegistry(parser)
 registry.load_config(pipeline_file)
-workFlow = WorkFlow("batch", registry)
+workFlow = WorkFlow("batch", registry, audit=None, alerter=None,validator=None)
 
 files = [
     "C:/data/customers.csv",
@@ -192,7 +192,8 @@ files = [
     "C:/data/drivers.csv",
     "C:/data/segments.csv",
     "C:/data/teams.csv",
+    "C:/data/regions.csv",
+    "C:/data/cities.csv",
 ]
 
 workFlow.orchestrate(files)
- '''

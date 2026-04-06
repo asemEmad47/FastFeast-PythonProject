@@ -31,11 +31,10 @@ from etl.lookup.orphan_lookup                    import OrphanLookUp
 
 class DataFlowTasksCreator:
 
-    def __init__(self,registry, audit, sources, files):
+    def __init__(self,registry, audit, data):
         self.registry = registry
         self.audit = audit
-        self.sources = sources
-        self.files = files
+        self.data = data
 
     # ═══════════════════════════════════════════════════════════════
     # PUBLIC METHOD
@@ -43,55 +42,66 @@ class DataFlowTasksCreator:
     def create_data_flow_task(
         self,
         batch_mode: str,
-        table_key: str,
-        table_conf: dict,
-        active_sources: list[str],
-        files: list[str]
+        matched_data: list
     ) -> DataFlowTask:
 
         # ── Stage 1: dataframe_dicts ─────────────────────────────
-        # data_framse_dicts = [
-        #     {
-        #         "dataframe": None,
-        #         "dimension": table_key,
-        #         "source": file_key,
-        #         "file_path": files
-        #     }
-        #     for file_key in active_sources
-        # ]
-
-
-
-        data_framse_dicts = []
-
-        for file_key in active_sources:
-            file_name = self.registry.get_file_name(file_key)
-            file_path = self._resolve_path(file_name)
-
-            data_framse_dicts.append({
-                "dataframe": None,
-                "dimension": table_key,
-                "source": file_key,
-                "file_path": file_path
-            })
-
-        # ── Stage 1: before_join_components (DICT) ──────────────
+        dataframe_dicts = []
         before_join_components = {}
 
-        for file_key in active_sources:
-            before_join_components[file_key] = self._build_before_join_chain(file_key)
+        for item in matched_data:
+            table_key = item["table"]
+            sources = item["sources"]
+            files = item["files"]
+
+            for file_key in sources:
+                file_name = self.registry.get_file_name(file_key)
+
+                # 🔥 match correct file path
+                file_path = next(
+                    (f for f in files if f.endswith(file_name)),
+                    None
+                )
+
+                dataframe_dicts.append({
+                    "dataframe": None,
+                    "dimension": table_key,
+                    "source": file_key,
+                    "file_path": file_path
+                })
+
+                # build before join per source
+                before_join_components[file_key] = self._build_before_join_chain(file_key,file_path)
+
+        print("DataFrame Dicts:", dataframe_dicts)
 
         # ── Stage 2: join ───────────────────────────────────────
         join_task = None
-        if len(active_sources) > 1:
-            #join_task = self._build_join(table_conf)
-            join_task = self._build_join(table_key)
+
+        if any(len(item["sources"]) > 1 for item in matched_data):
+            join_task = Join(
+                audit=self.audit,
+                registry=self.registry,
+            )
 
         # ── Stage 3: after join ─────────────────────────────────
-        after_join_components = self._build_after_join_components(
-            batch_mode, table_key, table_conf
-        )
+        after_join_components = {}
 
+        for item in matched_data:
+            table_key = item["table"]
+            table_conf = self.registry.get_table_conf(table_key)
+
+            # build components for this table only
+            components = self._build_after_join_components(
+                batch_mode,
+                table_key,
+                table_conf
+            )
+
+            after_join_components[table_key] = components
+
+        
+        # ── Build Task ──────────────────────────────────────────
         task = DataFlowTask(
             audit=self.audit,
             registry=self.registry,
@@ -100,30 +110,40 @@ class DataFlowTasksCreator:
             after_join_components=after_join_components,
         )
 
-    
-        task.dataframe_dicts = data_framse_dicts
+        task.dataframe_dicts = dataframe_dicts
+        # Print nicely
+        print("\n=== DataFrame Dicts ===")
+        for df in dataframe_dicts:
+            print(f"Dimension: {df['dimension']}, Source: {df['source']}, File: {df['file_path']}")
 
-        return task
+        print("\n=== Before Join Components ===")
+        for source, chain in before_join_components.items():
+            chain_names = [c.__class__.__name__ for c in chain]
+            print(f"Source: {source} → Chain: {chain_names}")
 
+        print("\n=== Join Task ===")
+        if join_task:
+            print(f"Join task exists: {join_task.__class__.__name__}")
+        else:
+            print("No join task needed")
+
+        print("\n=== After Join Components ===")
+        for table_key, comps in after_join_components.items():
+            comp_names = [c.__class__.__name__ for c in comps]
+            print(f"Table: {table_key} → Components: {comp_names}")
+
+        return task, dataframe_dicts
     # ══════════════════════════════════════════════════════════════════
     # STAGE BUILDERS
     # ══════════════════════════════════════════════════════════════════
-
-    def _build_before_join_chain(self, file_key: str) -> list:
-
-        # ✔ correct usage
-        file_conf = self.registry.get_file_conf(file_key)
-        file_name = self.registry.get_file_name(file_key)
-
-        file_path = self._resolve_path(file_name)
-        
+    def _build_before_join_chain(self, file_key: str, file_path: str) -> list:
 
         chain = []
-        
 
+        # Read
         chain.append(
             ReadFromSourceFactory.create_source(
-                file_name=file_path,
+                file_name=file_path   
             )
         )
 
@@ -138,10 +158,10 @@ class DataFlowTasksCreator:
         # PII
         pii_fields = self.registry.get_pii_columns(file_key)
         if pii_fields:
-            chain.append(PIIMask(self.audit,self.registry))
+            chain.append(PIIMask(self.audit, self.registry))
 
         # Quarantine
-        chain.append(QuarantineWriter(audit=self.audit)) #add registry here
+        chain.append(QuarantineWriter(audit=self.audit))
 
         return chain
     

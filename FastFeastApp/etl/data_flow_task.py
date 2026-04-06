@@ -29,9 +29,6 @@ from typing import Optional
 import pandas as pd
 from etl.task import Task
 
-##### To-do list:
-##### move dictionary to registry
-
 class DataFlowTask(Task):
 
     def __init__(
@@ -70,6 +67,7 @@ class DataFlowTask(Task):
                 continue
 
             for comp in chain:
+                print(comp.__class__.__name__)
                 ok, errors, data_dict, metrics, bad_rows = comp.do_task(data_dict)
                 all_errors.extend(errors)
 
@@ -83,6 +81,7 @@ class DataFlowTask(Task):
         # ── Stage 2: join ────────────────────────────────────────────
         if self.join_task and dataframe_dicts:
 
+            print(self.join_task.__class__.__name__)
             ok, errors, result_dicts, metrics, bad_rows = self.join_task.do_task(dataframe_dicts)
             all_errors.extend(errors)
 
@@ -98,16 +97,22 @@ class DataFlowTask(Task):
 
         for i, data_dict in enumerate(dataframe_dicts):
             dimension = data_dict["dimension"]
-
             working = data_dict
 
-            for comp in self.after_join_components:
+            comps = self.after_join_components.get(dimension, [])
+            if not comps:
+                self.audit.log_failure(f"No after-join components for {dimension}")
+                continue
+
+            for comp in comps:
+                print(f"[After-Join] Running: {comp.__class__.__name__} for {dimension}")
+
                 ok, errors, working, metrics, bad_rows = comp.do_task(working)
                 all_errors.extend(errors)
 
                 if not ok:
                     self.audit.log_failure(f"After-join failed [{dimension}]")
-                    return False, all_errors
+                    break  
 
             dataframe_dicts[i] = working
             self.audit.track_metrics(dimension, metrics)
