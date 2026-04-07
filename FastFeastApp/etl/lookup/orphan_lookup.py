@@ -5,68 +5,91 @@ from etl.lookup.lookup import LookUp
 from audit.audit import Audit
 from registry.data_registry import DataRegistry
 
-
 class OrphanLookUp(LookUp):
     def __init__(self, audit: Audit, registry: DataRegistry):
         super().__init__(audit=audit, registry=registry)
 
     def do_task(self, data_frame_dict: dict) -> tuple[bool, list[str], dict, dict, Optional[pd.DataFrame]]:
-        df = data_frame_dict.get('dataframe')
+            df = data_frame_dict.get('dataframe')
+            
+            # --- Print Before ---
+            print("\n" + "="*40)
+            print("ORPHAN LOOKUP: DICT BEFORE")
+            print(f"Target: {data_frame_dict.get('target')}")
+            if df is not None:
+                print(df.head(3))
+            print("="*40)
 
-        if df is None or df.empty:
-            return False, ["OrphanLookUp: fact dataframe is empty or missing"], data_frame_dict, {}, None
+            if df is None or df.empty:
+                return False, ["OrphanLookUp: Dataframe is empty"], data_frame_dict, {}, None
 
-        fact_dimensions = self.registry.get_fact_dimension_sources(df["target"])
-        if not fact_dimensions:
-            return False, [f"OrphanLookUp: no fact-dimension sources found for '{df['target']}'"], data_frame_dict, {}, None
+            current_df = df.copy()
+            target_table = data_frame_dict.get("target")
+            fact_dimensions = self.registry.get_fact_dimension_sources(target_table)
 
-        total_records = len(df)
-        all_orphan_frames = []
-        errors = []
+            if not fact_dimensions:
+                return True, [], data_frame_dict, {"status": "no dimensions to check"}, None
 
-        for dim_source in fact_dimensions:
-            dim_name = dim_source.get("dim")
-            fk = dim_source.get("fk")
+            orphan_reasons = pd.Series("", index=current_df.index)
+            is_orphan = pd.Series(False, index=current_df.index)
 
-            if not dim_name or not fk:
-                errors.append(f"OrphanLookUp: skipping incomplete dimension source: {dim_source}")
-                continue
+            for dim_source in fact_dimensions:
+                dim_name = dim_source.get("dim")
+                fk = dim_source.get("fk")
 
-            if isinstance(fk, list):
-                continue
+                # 1. Handle Missing Config
+                if not dim_name or not fk:
+                    continue
 
-            dim_repo = self.registry.get_repository(dim_name)
-            if dim_repo is None:
-                errors.append(f"OrphanLookUp: repository for '{dim_name}' not found in registry")
-                continue
+                # 2. Fix 'unhashable type: list'
+                # If fk is a list (composite key), we need to ensure all columns exist
+                if isinstance(fk, list):
+                    missing_cols = [c for c in fk if c not in current_df.columns]
+                    if missing_cols:
+                        continue
+                    # For now, skip orphan logic for composite keys if repo doesn't support them
+                    # or implement composite logic here.
+                    continue 
+                
+                # 3. Handle Single String FK
+                if fk not in current_df.columns:
+                    continue
+                
+                non_null_mask = current_df[fk].notna()
+                fact_fk_values = set(current_df.loc[non_null_mask, fk])
+                
+                if not fact_fk_values:
+                    continue
 
-            fact_fk_values = set(df[fk].dropna())
-            if not fact_fk_values:
-                continue
+                dim_repo = self.registry.get_repository(dim_name)
+                if dim_repo:
+                    existing_ids = dim_repo.get_existing_ids(fact_fk_values)
+                    orphans = fact_fk_values - existing_ids
+                    
+                    if orphans:
+                        row_is_orphan = non_null_mask & current_df[fk].isin(orphans)
+                        is_orphan |= row_is_orphan
+                        orphan_reasons.loc[row_is_orphan] += f"Missing {dim_name} Key ({fk}); "
 
-            existing_ids = dim_repo.get_existing_ids(fact_fk_values)
-            orphan_values = fact_fk_values - existing_ids
+            # 4. Finalize Clean vs Orphan
+            clean_df = current_df[~is_orphan].reset_index(drop=True)
+            combined_orphans = current_df[is_orphan].copy()
+            orphan_errors_list = orphan_reasons[is_orphan].tolist()
 
-            if orphan_values:
-                orphan_rows = df[df[fk].isin(orphan_values)].copy()
-                orphan_rows["orphan_dim"] = dim_name
-                orphan_rows["orphan_fk"] = fk
-                all_orphan_frames.append(orphan_rows)
+            data_frame_dict['dataframe'] = clean_df
 
-        combined_orphans = pd.concat(all_orphan_frames, ignore_index=False) if all_orphan_frames else None
+            # --- Print After ---
+            print("\n" + "="*40)
+            print("ORPHAN LOOKUP: DICT AFTER")
+            print(f"Clean Rows: {len(clean_df)} | Orphans: {len(combined_orphans)}")
+            if not combined_orphans.empty:
+                print(f"Sample Reason: {orphan_errors_list[0]}")
+            print("="*40 + "\n")
 
-        if combined_orphans is not None:
-            orphan_indices = combined_orphans.index.unique()
-            df = df.drop(index=orphan_indices).reset_index(drop=True)
-            data_frame_dict['dataframe'] = df
-            combined_orphans = combined_orphans.reset_index(drop=True)
+            metrics = {
+                "total_records": len(df),
+                "orphan_count": len(combined_orphans),
+                "passed_count": len(clean_df)
+            }
 
-        orphan_count = len(combined_orphans) if combined_orphans is not None else 0
-
-        metrics = {
-            "total_records": total_records,
-            "orphan_count": orphan_count,
-            "passed_count": total_records - orphan_count,
-        }
-
-        return True, errors, data_frame_dict, metrics, combined_orphans
+            return True, orphan_errors_list, data_frame_dict, metrics, combined_orphans if not combined_orphans.empty else None
