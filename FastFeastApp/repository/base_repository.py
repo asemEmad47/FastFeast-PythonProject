@@ -10,6 +10,7 @@ from typing import TypeVar, Generic, Optional, Any
 from registry.data_registry import DataRegistry
 from db.database_manager import DatabaseManager
 from helpers.logger_builder import build_file_logger, log_error
+import json
 
 
 _LOG_DIR = os.path.join(os.path.dirname(__file__), "logs")
@@ -37,17 +38,29 @@ class BaseRepository(Generic[T]):
         return self.__table__
 
     # ── Write ──────────────────────────────────────────────────────────────
-
     def add_many(self, records: list[dict]) -> bool:
         method = "add_many"
         if not records:
             return True
         try:
-            columns      = ", ".join(records[0].keys())
-            placeholders = ", ".join(["%s"] * len(records[0]))
-            sql = f"INSERT INTO {self._full_table_name()} ({columns}) VALUES ({placeholders})"
+            columns = list(records[0].keys())
+            placeholders = [
+                "PARSE_JSON(%s)" if col == "record_payload" else "%s"
+                for col in columns
+            ]
+            sql = f"INSERT INTO {self._full_table_name()} ({', '.join(columns)}) SELECT {', '.join(placeholders)}"
+            values = []
+            for r in records:
+                row = []
+                for col, val in zip(columns, r.values()):
+                    if col == "record_payload":
+                        row.append(json.dumps(val, default=str))
+                    else:
+                        row.append(val)
+                values.append(tuple(row))
             with self._db.cursor_scope() as cursor:
-                cursor.executemany(sql, [tuple(r.values()) for r in records])
+                for row in values:
+                    cursor.execute(sql, row)
             return True
         except Exception as e:
             log_error(_logger, self._audit,
@@ -56,7 +69,7 @@ class BaseRepository(Generic[T]):
                 f"records={len(records)} | Raw error: {e}"
             )
             return False
-
+        
     def upsert_many(self, records: list[dict]) -> bool:
         print("table name: ", self.__table__)
         print("table pk: ", self.__pk__)
