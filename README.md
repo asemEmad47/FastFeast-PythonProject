@@ -230,7 +230,7 @@ WorkFlow
 ---
 
 
-## Pipeline Flow (Updated)
+## Pipeline Flow
 
 The pipeline execution is organized into **four deterministic phases** orchestrated by the `WorkFlow` facade.
 Both **Batch** and **MicroBatch** threads send files to the same workflow engine.
