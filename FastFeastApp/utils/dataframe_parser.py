@@ -26,16 +26,19 @@ class DataFrameParser:
     # ── Building Steps ─────────────────────────────────────────────────────
 
     # Some of those methods are to be refactored/removed
-    def normalize_timestamps(self) -> DataFrameParser:
-        """
-        Converts all pandas Timestamp, datetime, and date columns to ISO strings.
-        Snowflake's pyformat binding does not support these types natively.
-        """
-        for col in self._df.columns:
+    def normalize_timestamps(self, date_columns: list[str] = None) -> DataFrameParser:
+        cols_to_process = date_columns if date_columns is not None else self._df.columns
+        for col in cols_to_process:
+            if col not in self._df.columns:
+                continue
             if pd.api.types.is_datetime64_any_dtype(self._df[col]):
-                self._df[col] = self._df[col].dt.strftime("%Y-%m-%dH:%M:%S")
+                self._df[col] = self._df[col].dt.strftime("%Y-%m-%d %H:%M:%S")
+            elif self._df[col].dtype == object:
+                try:
+                    self._df[col] = pd.to_datetime(self._df[col], format="mixed").dt.strftime("%Y-%m-%d %H:%M:%S")
+                except (ValueError, TypeError):
+                    pass
         return self
-
 
     def fill_nulls(self) -> DataFrameParser:
         """

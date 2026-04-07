@@ -380,6 +380,10 @@ class DataRegistry:
         conf = self.get_table_conf(table_key)
         return self._parser.get_target_required_fields(conf) or []
     
+    def get_target_date_columns(self, table_key: str) -> list[str]:
+        conf = self.get_table_conf(table_key)
+        return self._parser.get_target_date_columns(conf) or []
+    
     def get_target_source(self, table_key: str) -> list[str]:
         conf = self.get_table_conf(table_key)
         return self._parser.get_target_source(conf) or []

@@ -49,13 +49,12 @@ class DuplicatesLookUp(LookUp):
         
         db_df = pd.DataFrame(existing_rows, columns=keep_cols)
         data_frame_parser = DataFrameParser(db_df)
-        db_df = data_frame_parser.normalize_timestamps().to_df()
+        date_cols = self.registry.get_target_date_columns(dimension)
+        db_df = DataFrameParser(db_df).normalize_timestamps(date_columns=date_cols).to_df()
 
-        df_cpy = df.sort_values(by=pk).head(10)
-        db_df_cpy = db_df.sort_values(by=pk).head(10)
         
-        print(df_cpy)
-        print(db_df_cpy)
+        print(df)
+        print(db_df)
         
         
         merged = df[keep_cols].merge(db_df, on=keep_cols, how='left', indicator=True)
@@ -69,6 +68,7 @@ class DuplicatesLookUp(LookUp):
             "duplicate_count": len(duplicate_df),
             "passed_count": len(clean_df),
         }
+        print(metrics)
         
         errors = []
         for _, row in duplicate_df.iterrows():

@@ -56,6 +56,11 @@ class ConfFileParser:
             return []
         return conf_section.get("required_fields", [])
     
+    def get_target_date_columns(self, conf_section: dict) -> list[str]:
+        if not conf_section:
+            return []
+        return conf_section.get("date_columns", [])
+    
     def get_target_source(self, conf_section: dict) -> list[str]:
         if not conf_section:
             return []

@@ -101,15 +101,15 @@ class DataFlowTask(Task):
             dataframe_dicts = result_dicts
             
             
-            for src in dataframe_dicts:
-                records = (
-                    DataFrameParser(src["dataframe"])
-                        .normalize_timestamps()
-                        .fill_nulls()
-                        .to_df()
-                )
-                
-                src["dataframe"] = records
+        for src in dataframe_dicts:
+            date_cols = self.registry.get_target_date_columns(src["dimension"])
+            records = (
+                DataFrameParser(src["dataframe"])
+                    .normalize_timestamps(date_columns=date_cols)
+                    .fill_nulls()
+                    .to_df()
+            )
+            src["dataframe"] = records
             
             
             

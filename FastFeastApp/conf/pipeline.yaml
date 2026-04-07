@@ -221,6 +221,10 @@ tables:
       - is_active
       - created_at
       - updated_at
+   
+    date_columns:
+      - created_at
+      - updated_at
 
   CustomersDim:
     source: [customers, segments]
@@ -245,6 +249,10 @@ tables:
       - gender
       - priority_support
       - discount_pct
+      - created_at
+      - updated_at
+    
+    date_columns:
       - created_at
       - updated_at
 
@@ -304,6 +312,10 @@ tables:
       - rating_avg
       - prep_time_avg_min
       - is_active
+      - created_at
+      - updated_at
+    
+    date_columns:
       - created_at
       - updated_at
 
@@ -393,6 +405,10 @@ tables:
       - cancel_rate
       - completed_deliveries
       - is_active
+      - created_at
+      - updated_at
+    
+    date_columns:
       - created_at
       - updated_at
 
