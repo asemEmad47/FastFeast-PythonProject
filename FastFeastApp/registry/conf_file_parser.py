@@ -215,3 +215,8 @@ class ConfFileParser:
             return ""
         return batch_section.get("archive_dir_stream", "")
             
+    def get_renamed_columns(self, conf_section: dict) -> dict:
+        """Returns a dictionary of {old_name: new_name}"""
+        if not conf_section:
+            return {}
+        return conf_section.get("renamed_columns", {})

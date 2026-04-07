@@ -455,3 +455,7 @@ class DataRegistry:
     def get_quarantine_table_name(self) -> str:
         conf = self.get_table_conf("RejectedRecords")
         return self._parser.get_target_table_name(conf) or ""
+    
+    def get_renamed_columns(self, table_key: str) -> dict:
+        conf = self.get_table_conf(table_key)
+        return self._parser.get_renamed_columns(conf) or {}
