@@ -183,22 +183,22 @@ class DataFlowTasksCreator:
             )
         )
 
-        # if batch_mode in ["micro_batch", "microbatch"] :
+        if batch_mode in ["micro_batch", "microbatch"] :
 
-        #     components.append(
-        #         OrphanLookUp(
-        #             registry=self.registry,
-        #             audit=self.audit,
-        #         )
+            components.append(
+                OrphanLookUp(
+                    registry=self.registry,
+                    audit=self.audit,
+                )
                 
-        #     )
+            )
             
-        #     components.append(
-        #         LoadToFact(
-        #             registry=self.registry,
-        #             audit=self.audit,
-        #         )
-        #     )
+            components.append(
+                LoadToFact(
+                    registry=self.registry,
+                    audit=self.audit,
+                )
+            )
 
         if batch_mode in ["batch"]:
             components.append(
