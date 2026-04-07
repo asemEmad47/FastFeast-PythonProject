@@ -3,9 +3,9 @@ settings.py — All environment-level constants in one place.
 Override with environment variables in production via .env file.
 """
 import os
-#from dotenv import load_dotenv
+from dotenv import load_dotenv
 
-#load_dotenv()
+load_dotenv()
 
 # ============================================================
 # DATABASE SETTINGS
@@ -24,9 +24,9 @@ ALERT_EMAIL_PASSWORD = os.getenv("ALERT_EMAIL_PASSWORD", "tpfsajouaawlqmzw")
 SNOWFLAKE_ACCOUNT   = os.getenv("SNOWFLAKE_ACCOUNT")
 SNOWFLAKE_USER      = os.getenv("SNOWFLAKE_USER")
 SNOWFLAKE_PASSWORD  = os.getenv("SNOWFLAKE_PASSWORD")
-SNOWFLAKE_DATABASE  = os.getenv("SNOWFLAKE_DATABASE",  "FASTFEAST_DWH")
-SNOWFLAKE_SCHEMA    = os.getenv("SNOWFLAKE_SCHEMA",    "ANALYTICS")
-SNOWFLAKE_WAREHOUSE = os.getenv("SNOWFLAKE_WAREHOUSE", "FASTFEAST_ETL_WH")
+SNOWFLAKE_DATABASE  = os.getenv("SNOWFLAKE_DATABASE",  "FASTFEAST")
+SNOWFLAKE_SCHEMA    = os.getenv("SNOWFLAKE_SCHEMA",    "FASTFEASTDWH")
+SNOWFLAKE_WAREHOUSE = os.getenv("SNOWFLAKE_WAREHOUSE", "FASTFEAST_WH")
 SNOWFLAKE_ROLE      = os.getenv("SNOWFLAKE_ROLE",      "FASTFEAST_ADMIN")
 
 # ============================================================

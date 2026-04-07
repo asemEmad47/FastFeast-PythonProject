@@ -8,7 +8,7 @@ class Customer(Base):
     customer_id:   int
     full_name:     str
     email:         str
-    phone:         str
+    phone:         int
     region_id:     Decimal
     segment_id:    int
     signup_date:   datetime.date

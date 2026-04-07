@@ -58,9 +58,15 @@ class BaseRepository(Generic[T]):
             return False
 
     def upsert_many(self, records: list[dict]) -> bool:
+        print("table name: ", self.__table__)
+        print("table pk: ", self.__pk__)
+        print("table schema: ", self.__schema__)
+        
         method = "upsert_many"
         if not records:
             return True
+        
+        print("records len:" , len(records))
 
         pk      = self.__pk__
         tbl     = self._full_table_name()
@@ -93,6 +99,7 @@ class BaseRepository(Generic[T]):
                 cursor.execute(sql, flat_values)
             return True
         except Exception as e:
+            print(e)
             log_error(_logger, self._audit,
                 f"{self._ctx(method)} Upsert failed on {tbl} | "
                 f"Reason: MERGE statement rejected by Snowflake | "

@@ -1,3 +1,5 @@
+import msvcrt
+import os
 import time
 import threading
 from app.variables_initializer import VariablesInitializer
@@ -24,11 +26,15 @@ class AppManager:
             name="MicroBatchThread",
             daemon=True,
         )
-
+        
+        exit_thread = threading.Thread(target=self._listen_for_exit, daemon=True)
         t_batch.start()
         t_micro.start()
+        exit_thread.start()
+        
         t_batch.join() # To keep main thread alive while this thread is running
         t_micro.join() 
+
 
     def _batch_loop(self, batch, interval: int):
         while True:
@@ -36,3 +42,7 @@ class AppManager:
             batch.run()
             time.sleep(interval)
             
+    def _listen_for_exit(self):
+        msvcrt.getwch()
+        print("Shutting down...")
+        os._exit(0)

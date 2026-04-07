@@ -28,37 +28,25 @@ class WorkFlow(Task):
     def orchestrate(self, files: list[str], batch_date: str, hour: str | None = None) -> None:
 
         self.audit.start_batch(batch_date, hour)
-
         try:
             all_tables_conf = self.registry.get_all_tables_conf()
 
             matched_data = []
 
             for table_key, table_conf in all_tables_conf.items():
-
                 if table_conf.get("generated"):
                     continue
 
                 sources = self.registry.get_target_source(table_key) or []
 
-                active_sources = [
-                    s for s in sources
-                    if self._file_in_run(s, files)
-                    and not self._is_static_and_processed(s)
-                ]
 
-                if not active_sources:
-                    continue
-
-                matched_files = self._get_files_for_sources(active_sources, files)
-
+                matched_files = self._get_files_for_sources(sources, files)
                 matched_data.append({
                     "table": table_key,
-                    "sources": active_sources,
+                    "sources": sources,
                     "files": matched_files
                 })
-
-            print("Matched Data:", matched_data)
+                matched_data = [item for item in matched_data if item['files']]
             creator = DataFlowTasksCreator(
                 registry=self.registry,
                 audit=self.audit,
@@ -69,14 +57,13 @@ class WorkFlow(Task):
                 batch_mode=self.batch_mode,
                 matched_data=matched_data
             )
-
             ok, errors = self.data_flow_task.do_task(dataframe_dicts)
 
             if not ok:
                 self.trigger_alert(errors)
 
         finally:
-            if(self.audit.batch_orphan_count / self.audit.batch_record_count) > 0.5: 
+            if(self.audit.batch_total_records > 0 and self.audit.batch_orphan_count / self.audit.batch_total_records) > 0.5: 
                 self.trigger_alert()
             self.audit.end_batch()
 
@@ -101,13 +88,7 @@ class WorkFlow(Task):
                     result.append(f)
         return result
 
-    def _is_static_and_processed(self, file_key: str) -> bool:
-        file_type = self.registry.get_file_type(file_key)
 
-        if file_type == "static":
-            return True
-
-        return False
 
     def do_task(self):
         pass

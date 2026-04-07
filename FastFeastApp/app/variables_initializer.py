@@ -51,10 +51,11 @@ class VariablesInitializer:
         self.registry.load_config(pipeline_file)
 
         # Batch part
-        batch_workflow = WorkFlow()
+        batch_audit = Audit("batch")
+        batch_workflow = WorkFlow("batch", self.registry, audit=batch_audit, alerter=None, validator=None)
         self.batch = Batch(
                 batch_workflow,
-                Audit("batch"),
+                batch_audit,
                 FileTracker(self.archive_dir,self.archive_dir_stream,self.archive_dir_batch), 
                 self.registry, 
                 self.parser, 
@@ -64,17 +65,19 @@ class VariablesInitializer:
     
     
         # Micro-batch part
-        micro_batch_workflow = WorkFlow()
+        micro_batch_audit = Audit("micro_batch")
+        micro_batch_workflow = WorkFlow("micro_batch", self.registry,micro_batch_audit, alerter=None, validator=None)
         micro_batch_file_tracker = FileTracker(self.archive_dir,self.archive_dir_stream,self.archive_dir_batch)
         self.micro_batch = MicroBatch(
             micro_batch_workflow,
-            Audit("micro_batch"),
+            micro_batch_audit,
             micro_batch_file_tracker,
             self.registry, 
             self.parser, 
             self.email_task, 
             self.micro_batch_path
         )
+        
         micro_batch_file_tracker.set_micro_batch(self.micro_batch)
         
         

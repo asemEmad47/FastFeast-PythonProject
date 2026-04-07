@@ -12,6 +12,7 @@ class LoadToTarget(DataFlowComponent):
         super().__init__(audit=audit, registry=registry)
 
     def do_task(self, data_frame_dict: dict) -> tuple[bool, list[str], dict, dict, Optional[pd.DataFrame]]:
+        print("in load to target ")
         target = data_frame_dict['target']
         df = data_frame_dict['dataframe']
         dimension = data_frame_dict['dimension']

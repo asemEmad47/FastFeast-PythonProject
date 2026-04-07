@@ -15,12 +15,13 @@ Usage:
 """
 from __future__ import annotations
 import pandas as pd
+import numpy as np
 
 
 class DataFrameParser:
 
     def __init__(self, df: pd.DataFrame) -> None:
-        self._df = df.copy()
+        self._df = df
 
     # ── Building Steps ─────────────────────────────────────────────────────
 
@@ -32,16 +33,25 @@ class DataFrameParser:
         """
         for col in self._df.columns:
             if pd.api.types.is_datetime64_any_dtype(self._df[col]):
-                self._df[col] = self._df[col].dt.strftime("%Y-%m-%dT%H:%M:%S")
+                self._df[col] = self._df[col].dt.strftime("%Y-%m-%dH:%M:%S")
         return self
+
 
     def fill_nulls(self) -> DataFrameParser:
         """
-        Replaces all NaN and pandas NA values with None.
-        Snowflake does not understand float('nan') as a null value.
+        Replaces all NaN, pandas NA, and string 'NAN' values with None.
+        Snowflake requires None (which translates to NULL) to handle these correctly.
         """
-        self._df = self._df.where(pd.notnull(self._df), other=None)
+        # 1. Replace actual numpy/pandas NaNs with None
+        # .replace({np.nan: None}) is often more reliable than .fillna(None)
+        self._df = self._df.replace({np.nan: None})
+
+        # 2. Handle the string "NAN" (if it exists as a string)
+        # Note: Replacing with None is safer than "" for numeric columns
+        self._df = self._df.replace(to_replace=r'(?i)^nan$', value=None, regex=True)
+        
         return self
+
 
     def rename_columns(self, mapping: dict[str, str]) -> DataFrameParser:
         """
@@ -106,10 +116,11 @@ class DataFrameParser:
 
     # ── Terminal Step ──────────────────────────────────────────────────────
 
-    def to_records(self) -> list[dict]:
+    def to_df(self) -> pd.DataFrame:
         """
         Terminal step — converts the transformed DataFrame to a
         repository-ready list of dicts.
         Always call this last.
         """
-        return self._df.to_dict(orient="records")
+        return self._df
+    

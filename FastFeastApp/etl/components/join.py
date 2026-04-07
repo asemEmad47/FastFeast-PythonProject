@@ -14,7 +14,8 @@ class Join(DataFlowComponent):
 
     def do_task(self, data_frame_dict: dict) -> tuple[bool, list[str], dict, dict, Optional[pd.DataFrame]]:
         errors = []
-        
+        print("Starting Join component with data_frame_dicts:")
+
         dimension_groups: dict[str, list[dict]] = {}
         for d in self.data_framse_dicts:
             dimension = d["dimension"]
@@ -25,19 +26,19 @@ class Join(DataFlowComponent):
         for dimension, dicts in dimension_groups.items():
 
             join_configs = self.registry.get_join_config(dimension)
-            
-            if not join_configs:
-                continue
-            
-            for config in join_configs:
 
+            if not join_configs:
+                dicts[0]["target"] = self.registry.get_target_table_name(dicts[0]["dimension"])  # ← dimension
+                del dicts[0]["source"]
+                continue
+
+            for config in join_configs:
                 for right in config["right"]:
                     if "left_key" not in right or "right_key" not in right:
                         errors.append(f"Missing keys in join config for dimension '{dimension}'")
                         return False, errors, data_frame_dict, {}, None
-                    
+
             df_lookup: dict[str, pd.DataFrame] = {}
-            
             for d in dicts:
                 df_lookup[d["source"]] = d["dataframe"]
 
@@ -50,11 +51,10 @@ class Join(DataFlowComponent):
 
             for config in join_configs:
                 join_type = config["type"]
-
                 for right in config["right"]:
                     right_table = right["table"]
-                    left_key    = right["left_key"]
-                    right_key   = right["right_key"]
+                    left_key = right["left_key"]
+                    right_key = right["right_key"]
 
                     if right_table not in df_lookup:
                         errors.append(f"Right table '{right_table}' not found for dimension '{dimension}'")
@@ -68,16 +68,17 @@ class Join(DataFlowComponent):
                         suffixes=("", f"_{right_table}")
                     )
 
-            for d in dicts:
-                d["dataframe"] = merged_df
+            dicts[0]["dataframe"] = merged_df
+            dicts[0]["target"] = self.registry.get_target_table_name(dicts[0]["dimension"])
+            del dicts[0]["source"]
 
-            first = dicts[0]
-            first["target"] = self.registry.get_target_table_name(first["source"])
-            del first["source"]
-            for d in dicts[1:]:
-                self.data_framse_dicts.remove(d)
+            sources_to_remove = {d["source"] for d in dicts[1:]}
+            self.data_framse_dicts[:] = [
+                d for d in self.data_framse_dicts
+                if d.get("source") not in sources_to_remove
+            ]
 
         return True, errors, data_frame_dict, {}, None
 
     def set_data_framse_dict(self, data_framse_dicts: list[dict]) -> None:
-        self.data_framse_dicts = data_framse_dicts
+        self.data_framse_dicts = data_framse_dicts  

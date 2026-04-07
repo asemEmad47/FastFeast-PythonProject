@@ -9,18 +9,18 @@ from registry.data_registry import DataRegistry
 class QuarantineWriter(DataFlowComponent):
     def __init__(self, audit: Audit, registry: DataRegistry = None):
         super().__init__(audit=audit, registry=registry)
+        self.erros = []
 
     def do_task(self, data_frame_dict: dict) -> tuple[bool, list[str], dict, dict, Optional[pd.DataFrame]]:
         errors = []
         bad_rows = data_frame_dict.get("dataframe")
-
         if bad_rows is None or bad_rows.empty:
             return True, [], data_frame_dict, {}, None
 
         if "orphan_dim" in bad_rows.columns:
             errors.extend(self._quarantine_orphans(bad_rows, data_frame_dict))
         else:
-            errors.extend(self._quarantine_duplicates(bad_rows, data_frame_dict))
+            errors.extend(self._quarantine_non_orphan(bad_rows, data_frame_dict))
 
         data_frame_dict["dataframe"] = None
 
@@ -61,23 +61,26 @@ class QuarantineWriter(DataFlowComponent):
 
         return errors
 
-    def _quarantine_duplicates(self, duplicate_df: pd.DataFrame, data_frame_dict: dict) -> list[str]:
+    def _quarantine_non_orphan(self, duplicate_df: pd.DataFrame, data_frame_dict: dict) -> list[str]:
         errors = []
         repository = self.registry.get_repository("RejectedRecords")
         if repository is None:
             return ["QuarantineWriter: no repository found for RejectedRecords"]
 
-        batch_source = data_frame_dict.get("target")
+
+        batch_source = data_frame_dict.get("source")
+        
         if not batch_source:
-            return ["QuarantineWriter: missing target in data_frame_dict"]
+            batch_source = data_frame_dict.get("target")
+
 
         records = []
-        for _, row in duplicate_df.iterrows():
+        for i, row in duplicate_df.iterrows():
             payload = row.to_dict()
 
             records.append({
                 "record_payload": payload,
-                "rejected_reason": "duplicate",
+                "rejected_reason": self.errors[i] ,
                 "batch_source": batch_source,
                 "rejected_at": pd.Timestamp.now(tz="UTC"),
             })
@@ -86,3 +89,6 @@ class QuarantineWriter(DataFlowComponent):
             errors.append("QuarantineWriter: failed to write duplicate records to RejectedRecords")
 
         return errors
+    
+    def set_errors(self, errors: list[str]) -> None:
+        self.errors = errors

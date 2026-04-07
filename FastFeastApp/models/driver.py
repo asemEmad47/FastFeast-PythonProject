@@ -7,7 +7,7 @@ from models.base import Base
 class Driver(Base):
     driver_id:            int
     driver_name:          str
-    driver_phone:         str
+    driver_phone:         int
     national_id:          int
     region_id:            int
     shift:                str

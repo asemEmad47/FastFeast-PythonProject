@@ -3,10 +3,11 @@ from audit.audit import Audit
 from etl.task import Task
 from registry.data_registry import DataRegistry
 from etl.components.quarantine_writer import QuarantineWriter
-
+from etl.components.join import Join
+from utils.dataframe_parser import DataFrameParser
 class DataFlowTask(Task):
 
-    def __init__(self, audit : Audit, registry : DataRegistry,   before_join_components=None, join_task=None, after_join_components=None):
+    def __init__(self, audit : Audit, registry : DataRegistry,   before_join_components=None, join_task=Join, after_join_components=None):
         self.audit = audit
         self.registry = registry
         self.before_join_components = before_join_components or {}
@@ -40,7 +41,6 @@ class DataFlowTask(Task):
             file_ok = True
 
             for comp in chain:
-                print(comp.__class__.__name__)
                 ok, errors, data_dict, metrics, bad_rows = comp.do_task(data_dict)
                 
                 if bad_rows is not None and not bad_rows.empty:
@@ -48,6 +48,7 @@ class DataFlowTask(Task):
                         "dataframe": bad_rows,
                         "dimension": data_dict.get("dimension")
                     }
+                    self.quarantine_writer.set_errors(errors)
                     _, q_errors, _, _, _ = self.quarantine_writer.do_task(bad_dict)
                     all_errors.extend(q_errors)
                     
@@ -68,14 +69,23 @@ class DataFlowTask(Task):
 
         # ── Stage 2: join ────────────────────────────────────────────
         if self.join_task and dataframe_dicts:
+            self.join_task.set_data_framse_dict(dataframe_dicts)
 
             print(self.join_task.__class__.__name__)
+            
             ok, errors, result_dicts, metrics, bad_rows = self.join_task.do_task(dataframe_dicts)
+            
+            dataframe_dicts[:] = [
+                d for d in dataframe_dicts
+                if self.registry.get_target_table_type(d["dimension"]) != "static_dimension"
+            ]
+            
             if bad_rows is not None and not bad_rows.empty:
                 bad_dict = {
                     "dataframe": bad_rows,
                     "dimension": data_dict.get("dimension")
                 }
+                self.quarantine_writer.set_errors(errors)
                 _, q_errors, _, _, _ = self.quarantine_writer.do_task(bad_dict)
                 all_errors.extend(q_errors)
             all_errors.extend(errors)
@@ -89,6 +99,20 @@ class DataFlowTask(Task):
                 return False, all_errors
 
             dataframe_dicts = result_dicts
+            
+            
+            for src in dataframe_dicts:
+                records = (
+                    DataFrameParser(src["dataframe"])
+                        .normalize_timestamps()
+                        .fill_nulls()
+                        .to_df()
+                )
+                
+                src["dataframe"] = records
+            
+            
+            
 
         # ── Stage 3: after-join ───────────────────────────────────────
         if not dataframe_dicts:
@@ -118,6 +142,7 @@ class DataFlowTask(Task):
                         "dataframe": bad_rows,
                         "dimension": data_dict.get("dimension"),
                     }
+                    self.quarantine_writer.set_errors(errors)
                     _, q_errors, _, _, _ = self.quarantine_writer.do_task(bad_dict)
                     all_errors.extend(q_errors)
                     

@@ -46,7 +46,6 @@ class DatabaseManager:
                 user                      = SNOWFLAKE_USER,
                 password                  = SNOWFLAKE_PASSWORD,
                 database                  = SNOWFLAKE_DATABASE,
-                schema                    = SNOWFLAKE_SCHEMA,
                 warehouse                 = SNOWFLAKE_WAREHOUSE,
                 role                      = SNOWFLAKE_ROLE,
                 client_session_keep_alive = True

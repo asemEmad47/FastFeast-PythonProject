@@ -29,8 +29,6 @@ class ValidatorComponent(DataFlowComponent):
         dimension = data_frame_dict.get("dimension")
         source = data_frame_dict.get("source")
         
-        print(source)
-        print(dimension)
         if not dimension:
             errors.append("Missing 'dimension' in data_frame_dict")
             return False, errors, data_frame_dict, {}, None
@@ -39,8 +37,6 @@ class ValidatorComponent(DataFlowComponent):
         model = self.registry.get_model(source)
         required = self.registry.get_file_required_fields(source)
         
-        print("model = ", model)
-        print("required = ", required)
         
         if model is None or required is None:
             errors.append(f"Model or required fields not found for dimension '{dimension}'")

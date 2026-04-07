@@ -20,7 +20,9 @@ from etl.components.load_to_target              import LoadToTarget
 from etl.components.orphans_handler                 import OrphansHandler
 from etl.lookup.duplicates_lookup               import DuplicatesLookUp
 from etl.lookup.orphan_lookup                    import OrphanLookUp
-
+from validation.rows_validator import RowsValidator
+from validation.schema_validator import SchemaValidator
+from etl.components.load_to_fact import LoadToFact
 class DataFlowTasksCreator:
 
     def __init__(self,registry, audit, data):
@@ -60,8 +62,6 @@ class DataFlowTasksCreator:
                 # build before join per source
                 before_join_components[file_key] = self._build_before_join_chain(file_key,file_path)
 
-        print("DataFrame Dicts:", dataframe_dicts)
-
         # ── Stage 2: join ───────────────────────────────────────
         join_task = None
 
@@ -97,9 +97,6 @@ class DataFlowTasksCreator:
 
         task.dataframe_dicts = dataframe_dicts
         
-        print("\n=== DataFrame Dicts ===")
-        for df in dataframe_dicts:
-            print(f"Dimension: {df['dimension']}, Source: {df['source']}, File: {df['file_path']}")
 
         print("\n=== Before Join Components ===")
         for source, chain in before_join_components.items():
@@ -116,6 +113,7 @@ class DataFlowTasksCreator:
         for table_key, comps in after_join_components.items():
             comp_names = [c.__class__.__name__ for c in comps]
             print(f"Table: {table_key} → Components: {comp_names}")
+            
 
         return task, dataframe_dicts
     # ══════════════════════════════════════════════════════════════════
@@ -125,19 +123,29 @@ class DataFlowTasksCreator:
 
         chain = []
 
+        if(file_path is None):
+            return chain
         # Read
         chain.append(
             ReadFromSourceFactory.create_source(
-                file_name=file_path   
+                file_name=file_path,
+                audit=self.audit,
+                registry=self.registry
             )
         )
 
-        # Validate
+        if self._is_static_and_processed(file_key):
+            return chain
+        
+        # # Validate
+        validator = ValidatorComponent(audit=self.audit, registry=self.registry)
+        validator.register_validations(
+            {
+                "schema": SchemaValidator(),
+                "rows": RowsValidator(),
+            })
         chain.append(
-            ValidatorComponent(
-                audit=self.audit,
-                registry=self.registry,
-            )
+            validator
         )
         # PII
         pii_fields = self.registry.get_pii_columns(file_key)
@@ -154,6 +162,7 @@ class DataFlowTasksCreator:
             audit=self.audit,
             registry=self.registry,
             )
+        
     
 
 
@@ -174,26 +183,30 @@ class DataFlowTasksCreator:
             )
         )
 
-        # 4. Load
+        # if batch_mode in ["micro_batch", "microbatch"] :
 
-        components.append(
-            LoadToTarget(
-                registry=self.registry,
-                audit=self.audit,
-            )
-        )
+        #     components.append(
+        #         OrphanLookUp(
+        #             registry=self.registry,
+        #             audit=self.audit,
+        #         )
+                
+        #     )
+            
+        #     components.append(
+        #         LoadToFact(
+        #             registry=self.registry,
+        #             audit=self.audit,
+        #         )
+        #     )
 
-        # 5.  OrphanLookUp ONLY for microbatch
-        if batch_mode in ["micro_batch", "microbatch"] :
-
+        if batch_mode in ["batch"]:
             components.append(
-                OrphanLookUp(
+                LoadToTarget(
                     registry=self.registry,
                     audit=self.audit,
                 )
             )
-
-        if batch_mode in ["batch"]:
             components.append(
                 OrphansHandler(
                     registry=self.registry,
@@ -212,3 +225,11 @@ class DataFlowTasksCreator:
             if f.endswith(file_name):
                 return f
         return file_name
+
+    def _is_static_and_processed(self, file_key: str) -> bool:
+        file_type = self.registry.get_file_type(file_key)
+
+        if file_type == "static":
+            return True
+
+        return False

@@ -1,6 +1,5 @@
 import pandas as pd
-from pyparsing import Optional
-
+from typing import Optional
 from audit.audit import Audit
 from etl.components.data_flow_component import DataFlowComponent
 from registry.data_registry import DataRegistry

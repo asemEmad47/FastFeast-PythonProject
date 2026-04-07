@@ -2,8 +2,10 @@
 ReadFromSourceFactory — Factory Pattern.
 Inspects file extension → returns ReadFromCSV or ReadFromJSON.
 """
+from audit.audit import Audit
 from etl.components.read_from_csv import ReadFromCSV
 from etl.components.read_from_json import ReadFromJSON
+from registry.data_registry import DataRegistry
 
 
 class ReadFromSourceFactory:
