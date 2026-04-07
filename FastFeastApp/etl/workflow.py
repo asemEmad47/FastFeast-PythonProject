@@ -64,7 +64,7 @@ class WorkFlow(Task):
 
         finally:
             if(self.audit.batch_total_records > 0 and self.audit.batch_orphan_count / self.audit.batch_total_records) > 0.5: 
-                self.trigger_alert()
+                self.trigger_alert("Orphan is more than 50%")
             self.audit.end_batch()
 
     def trigger_alert(self, message: str):
