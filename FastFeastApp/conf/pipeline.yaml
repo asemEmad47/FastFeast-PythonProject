@@ -221,7 +221,7 @@ tables:
       - is_active
       - created_at
       - updated_at
-   
+
     date_columns:
       - created_at
       - updated_at
@@ -251,7 +251,7 @@ tables:
       - discount_pct
       - created_at
       - updated_at
-    
+
     date_columns:
       - created_at
       - updated_at
@@ -270,7 +270,7 @@ tables:
     repository: RegionRepository
     primary_key: region_id
     foreign_keys:
-      city_id: 
+      city_id:
         dim_table: CitiesDim
         pk_column: city_id
     keep_columns:
@@ -314,7 +314,7 @@ tables:
       - is_active
       - created_at
       - updated_at
-    
+
     date_columns:
       - created_at
       - updated_at
@@ -407,7 +407,7 @@ tables:
       - is_active
       - created_at
       - updated_at
-    
+
     date_columns:
       - created_at
       - updated_at
@@ -449,7 +449,11 @@ tables:
         left_keys: [order_id, ticket_id]
         right_keys: [order_id, ticket_id]
         type: left
-
+    renamed_columns:
+      status: Status
+      date_key_ticket_created: DATE_KEY_CREATED
+      date_key_first_response: DATE_KEY_FIRST_RESPONSE
+      date_key_resolved: DATE_KEY_RESOLVED
     dimension_sources:
       - dim: CustomersDim
         fk: customer_id
@@ -484,7 +488,6 @@ tables:
     primary_key: ticket_id
 
     keep_columns:
-      - transaction_id
       - ticket_id
       - order_id
       - customer_id
@@ -493,19 +496,15 @@ tables:
       - restaurant_id
       - region_id
       - reason_id
-      - priority_id
       - channel_id
       - refund_amount
-      - created_at
-      - first_response_at
-      - resolved_at
+      - DATE_KEY_CREATED
+      - DATE_KEY_FIRST_RESPONSE
       - resolution_time_min
       - first_response_time_min
       - sla_first_response_breached
       - sla_resolution_breached
-      - date_key_ticket_created
-      - date_key_first_response
-      - date_key_resolved
+      - DATE_KEY_RESOLVED
       - order_amount
       - delivery_fee
       - discount_amount
@@ -527,20 +526,16 @@ tables:
           - name: sla_first_response_breached
             type: comparison
             params:
-              {
-                left: "first_response_time_min",
-                op: "<",
-                right: "sla_first_due_at",
-              }
+              left: "first_response_at"
+              op: ">"
+              right: "sla_first_due_at"
 
           - name: sla_resolution_breached
             type: comparison
             params:
-              {
-                left: "resolution_time_min",
-                op: "<",
-                right: "sla_resolve_due_at",
-              }
+              left: "resolved_at"
+              op: ">"
+              right: "sla_resolve_due_at"
 
           - name: revenue_impact
             type: arithmetic
@@ -548,6 +543,17 @@ tables:
               - { column: "refund_amount", op: "+", factor: 1 }
               - { column: "discount_amount", op: "+", factor: 1 }
 
+          - name: date_key_ticket_created
+            type: date_to_key
+            params: { column: "created_at" }
+
+          - name: date_key_first_response
+            type: date_to_key
+            params: { column: "first_response_at" }
+
+          - name: date_key_resolved
+            type: date_to_key
+            params: { column: "resolved_at" }
   # ============================================================
   # TABLES (Quarantine Zone)
   # ============================================================
