@@ -22,6 +22,9 @@ class AggregationHelper:
 
                 elif action_type == "arithmetic":
                     df = AggregationHelper._arithmetic(df, name, params)
+                    
+                elif action_type == "date_to_key":
+                    df = AggregationHelper._date_to_key(df, name, params)
 
                 else:
                     errors.append(f"Unknown action type '{action_type}' for column '{name}'")
@@ -60,6 +63,16 @@ class AggregationHelper:
 
         left_series = df[left]
         right_series = df[right]
+
+        try:
+            left_series = pd.to_datetime(left_series)
+            right_series = pd.to_datetime(right_series)
+        except Exception:
+            try:
+                left_series = pd.to_numeric(left_series)
+                right_series = pd.to_numeric(right_series)
+            except Exception:
+                pass  
 
         if op == "<":
             df[name] = left_series < right_series
@@ -104,4 +117,15 @@ class AggregationHelper:
                 result = result / right_value.replace(0, float("nan"))  # avoid division by zero
 
         df[name] = result
+        return df
+
+    @staticmethod
+    def _date_to_key(df: pd.DataFrame, name: str, params: dict) -> pd.DataFrame:
+        column = params["column"]
+        df[name] = (
+            pd.to_datetime(df[column], errors="coerce")
+            .dt.strftime("%Y%m%d")
+            .where(df[column].notna(), other=None)
+            .astype("Int64")  
+        )
         return df
