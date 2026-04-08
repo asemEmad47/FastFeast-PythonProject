@@ -1,0 +1,97 @@
+table DATEDIM
+	lineageTag: acbd3613-3d85-48cb-b225-50b0ff104a63
+
+	column DATE_ID
+		dataType: double
+		lineageTag: 83c2adda-02db-4039-a673-d1a7aec39f38
+		summarizeBy: none
+		sourceColumn: DATE_ID
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column FULL_DATE
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: 21e72549-6e9c-4dc5-aa93-60a992a5a7a9
+		summarizeBy: none
+		sourceColumn: FULL_DATE
+
+		variation Variation
+			isDefault
+			relationship: 437f1667-5f4f-4a15-81c7-e136a855e00e
+			defaultHierarchy: LocalDateTable_bc1c0fd3-8a21-42af-b7f9-01dc2e8a038d.'Date Hierarchy'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column DAY
+		dataType: string
+		lineageTag: 11bc13cf-bc66-4fa4-85ad-3820da964e20
+		summarizeBy: none
+		sourceColumn: DAY
+
+		annotation SummarizationSetBy = Automatic
+
+	column MONTH
+		dataType: string
+		lineageTag: b53ea379-17e8-4612-a576-9b4f371e9f14
+		summarizeBy: none
+		sourceColumn: MONTH
+
+		annotation SummarizationSetBy = Automatic
+
+	column QUARTER
+		dataType: string
+		lineageTag: 9b1f26b2-1d67-4a8b-a3d2-fc6a3e88106b
+		summarizeBy: none
+		sourceColumn: QUARTER
+
+		annotation SummarizationSetBy = Automatic
+
+	column YEAR
+		dataType: double
+		lineageTag: fbfcd52e-5c2c-4303-ac4f-cbd8b7aa7cc5
+		summarizeBy: sum
+		sourceColumn: YEAR
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column DAY_OF_WEEK
+		dataType: double
+		lineageTag: 233c156f-52ad-47d2-8fba-ac998a1e10d8
+		summarizeBy: sum
+		sourceColumn: DAY_OF_WEEK
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column IS_WEEKEND
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		lineageTag: f1a88568-9f84-4308-b054-4186a3069844
+		summarizeBy: none
+		sourceColumn: IS_WEEKEND
+
+		annotation SummarizationSetBy = Automatic
+
+	partition DATEDIM = m
+		mode: import
+		source =
+				let
+				    Source = Snowflake.Databases("qzhsbsr-yu29773","FASTFEAST_WH",[Implementation="2.0"]),
+				    FASTFEAST_Database = Source{[Name="FASTFEAST",Kind="Database"]}[Data],
+				    FASTFEASTDWH_DUMMY_Schema = FASTFEAST_Database{[Name="FASTFEASTDWH_DUMMY",Kind="Schema"]}[Data],
+				    DATEDIM_Table = FASTFEASTDWH_DUMMY_Schema{[Name="DATEDIM",Kind="Table"]}[Data]
+				in
+				    DATEDIM_Table
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

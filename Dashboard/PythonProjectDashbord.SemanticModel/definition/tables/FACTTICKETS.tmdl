@@ -1,0 +1,235 @@
+table FACTTICKETS
+	lineageTag: df485282-0216-4e46-a387-937b9fb1ca1d
+
+	column TRANSACTION_ID
+		dataType: string
+		lineageTag: e1a9d705-7106-47ca-86f6-6fc8c2210565
+		summarizeBy: none
+		sourceColumn: TRANSACTION_ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column TICKET_ID
+		dataType: string
+		lineageTag: 39aebf5c-29df-441d-b5e7-7e940f1b61e5
+		summarizeBy: none
+		sourceColumn: TICKET_ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column ORDER_ID
+		dataType: string
+		lineageTag: 63294923-d720-4e31-ba02-b864341f222b
+		summarizeBy: none
+		sourceColumn: ORDER_ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column CUSTOMER_ID
+		dataType: string
+		lineageTag: f46f1b91-3edf-40b7-b3bc-2730c124579d
+		summarizeBy: none
+		sourceColumn: CUSTOMER_ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column AGENT_ID
+		dataType: string
+		lineageTag: 15844d63-864b-4347-9799-772c3ad3c177
+		summarizeBy: none
+		sourceColumn: AGENT_ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column DRIVER_ID
+		dataType: string
+		lineageTag: 732618bd-f6b0-484a-952e-29ed70a09430
+		summarizeBy: none
+		sourceColumn: DRIVER_ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column RESTAURANT_ID
+		dataType: string
+		lineageTag: bad794c6-25b3-4d28-8faa-4e500346f4eb
+		summarizeBy: none
+		sourceColumn: RESTAURANT_ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column REGION_ID
+		dataType: string
+		lineageTag: 1d94c936-242e-4bed-a8ce-5c38398f9b29
+		summarizeBy: none
+		sourceColumn: REGION_ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column REASON_ID
+		dataType: string
+		lineageTag: fa0362e6-f165-4306-a95b-12b777828886
+		summarizeBy: none
+		sourceColumn: REASON_ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column CHANNEL_ID
+		dataType: string
+		lineageTag: 78903d04-03ac-46c7-ba63-b50b6756e06c
+		summarizeBy: none
+		sourceColumn: CHANNEL_ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column DATE_KEY_CREATED
+		dataType: double
+		lineageTag: 0cfe6aae-b272-4b2d-9305-850ee3fb655c
+		summarizeBy: none
+		sourceColumn: DATE_KEY_CREATED
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column DATE_KEY_FIRST_RESPONSE
+		dataType: double
+		lineageTag: bdf6787c-53b4-4d3c-8675-2e46a5da1741
+		summarizeBy: sum
+		sourceColumn: DATE_KEY_FIRST_RESPONSE
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column DATE_KEY_RESOLVED
+		dataType: double
+		lineageTag: eaa04ade-8870-44d8-9921-2facda30e6c7
+		summarizeBy: sum
+		sourceColumn: DATE_KEY_RESOLVED
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column STATUS
+		dataType: string
+		lineageTag: a30494b6-c8d3-4aef-b725-f1d12e9d52cc
+		summarizeBy: none
+		sourceColumn: STATUS
+
+		annotation SummarizationSetBy = Automatic
+
+	column ORDER_AMOUNT
+		dataType: double
+		lineageTag: b3224f4c-3dc1-4d0a-a6df-8fcd9e7acdf3
+		summarizeBy: sum
+		sourceColumn: ORDER_AMOUNT
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column DELIVERY_FEE
+		dataType: double
+		lineageTag: 88bb0fae-b7a9-440b-8872-6cb80a26fb8b
+		summarizeBy: sum
+		sourceColumn: DELIVERY_FEE
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column DISCOUNT_AMOUNT
+		dataType: double
+		lineageTag: dd25e9fd-c5b4-499a-90e7-9ee09848c061
+		summarizeBy: sum
+		sourceColumn: DISCOUNT_AMOUNT
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column TOTAL_AMOUNT
+		dataType: double
+		lineageTag: f40f160e-6ece-45f7-afb3-f3354db766e3
+		summarizeBy: sum
+		sourceColumn: TOTAL_AMOUNT
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column REVENUE_IMPACT
+		dataType: double
+		lineageTag: cde16fd7-9e5e-4db9-8f97-018d7f438a06
+		summarizeBy: sum
+		sourceColumn: REVENUE_IMPACT
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column REFUND_AMOUNT
+		dataType: double
+		lineageTag: 8eee521b-f37c-4a8f-a33d-452020342d51
+		summarizeBy: sum
+		sourceColumn: REFUND_AMOUNT
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column RESOLUTION_TIME_MIN
+		dataType: double
+		lineageTag: dc7b4d7a-945b-4e5f-b274-8028ea031e37
+		summarizeBy: sum
+		sourceColumn: RESOLUTION_TIME_MIN
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column FIRST_RESPONSE_TIME_MIN
+		dataType: double
+		lineageTag: 856df5ec-ebe9-482b-887b-5034839fcdbd
+		summarizeBy: sum
+		sourceColumn: FIRST_RESPONSE_TIME_MIN
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column SLA_FIRST_RESPONSE_BREACHED
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		lineageTag: 72de3a8a-a449-4d34-8029-96e3dad86af5
+		summarizeBy: none
+		sourceColumn: SLA_FIRST_RESPONSE_BREACHED
+
+		annotation SummarizationSetBy = Automatic
+
+	column SLA_RESOLUTION_BREACHED
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		lineageTag: fdfd2a9f-b40d-4a4d-ab54-e92f0f3219de
+		summarizeBy: none
+		sourceColumn: SLA_RESOLUTION_BREACHED
+
+		annotation SummarizationSetBy = Automatic
+
+	partition FACTTICKETS = m
+		mode: import
+		source =
+				let
+				    Source = Snowflake.Databases("qzhsbsr-yu29773","FASTFEAST_WH",[Implementation="2.0"]),
+				    FASTFEAST_Database = Source{[Name="FASTFEAST",Kind="Database"]}[Data],
+				    FASTFEASTDWH_DUMMY_Schema = FASTFEAST_Database{[Name="FASTFEASTDWH_DUMMY",Kind="Schema"]}[Data],
+				    FACTTICKETS_Table = FASTFEASTDWH_DUMMY_Schema{[Name="FACTTICKETS",Kind="Table"]}[Data],
+				    #"Changed Type" = Table.TransformColumnTypes(FACTTICKETS_Table,{{"TRANSACTION_ID", type text}, {"CUSTOMER_ID", type text}, {"AGENT_ID", type text}, {"DRIVER_ID", type text}, {"RESTAURANT_ID", type text}, {"REGION_ID", type text}, {"REASON_ID", type text}, {"CHANNEL_ID", type text}})
+				in
+				    #"Changed Type"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

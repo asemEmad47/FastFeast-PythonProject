@@ -1,0 +1,156 @@
+table DRIVERSDIM
+	lineageTag: 37e2835b-77a2-4b27-9e84-828a86c95309
+
+	column DRIVER_ID
+		dataType: string
+		lineageTag: b5c31544-cd77-4182-af51-f4067d130d34
+		summarizeBy: none
+		sourceColumn: DRIVER_ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column DRIVER_NAME
+		dataType: string
+		lineageTag: f670c974-4077-4ab3-aae6-66ef25a5fefc
+		summarizeBy: none
+		sourceColumn: DRIVER_NAME
+
+		annotation SummarizationSetBy = Automatic
+
+	column DRIVER_PHONE
+		dataType: string
+		lineageTag: 19917146-c25f-45bf-8f4e-4a16f1e9570b
+		summarizeBy: none
+		sourceColumn: DRIVER_PHONE
+
+		annotation SummarizationSetBy = Automatic
+
+	column NATIONAL_ID
+		dataType: string
+		lineageTag: f6f7a23e-5f87-4359-8016-53cd729919ad
+		summarizeBy: none
+		sourceColumn: NATIONAL_ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column SHIFT
+		dataType: string
+		lineageTag: 8a4c594a-1304-41c4-83fc-96ab330eff7f
+		summarizeBy: none
+		sourceColumn: SHIFT
+
+		annotation SummarizationSetBy = Automatic
+
+	column VEHICLE_TYPE
+		dataType: string
+		lineageTag: ec1cb434-33e8-4ab9-acce-2df1f2ca77fc
+		summarizeBy: none
+		sourceColumn: VEHICLE_TYPE
+
+		annotation SummarizationSetBy = Automatic
+
+	column HIRE_DATE
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: f9423ef9-b124-4e1a-96a2-e44125a55f59
+		summarizeBy: none
+		sourceColumn: HIRE_DATE
+
+		variation Variation
+			isDefault
+			relationship: b971b8e5-da92-4612-abeb-a61d49db7d40
+			defaultHierarchy: LocalDateTable_91e59f20-1eed-47f2-b5ba-03525c078824.'Date Hierarchy'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column RATING_AVG
+		dataType: string
+		lineageTag: 2db83388-6e62-48d5-b2b2-5ef5e9fd155f
+		summarizeBy: none
+		sourceColumn: RATING_AVG
+
+		annotation SummarizationSetBy = Automatic
+
+	column ON_TIME_RATE
+		dataType: string
+		lineageTag: 7d61b8b2-cedb-402f-ba97-2fd008fbe7aa
+		summarizeBy: none
+		sourceColumn: ON_TIME_RATE
+
+		annotation SummarizationSetBy = Automatic
+
+	column CANCEL_RATE
+		dataType: string
+		lineageTag: e71e06f2-05ef-47d0-add8-05ad7c05f012
+		summarizeBy: none
+		sourceColumn: CANCEL_RATE
+
+		annotation SummarizationSetBy = Automatic
+
+	column COMPLETED_DELIVERIES
+		dataType: double
+		lineageTag: 99bfdf1b-ab4d-45c5-bc71-575204624a8b
+		summarizeBy: sum
+		sourceColumn: COMPLETED_DELIVERIES
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column IS_ACTIVE
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		lineageTag: dc42fd0b-74b4-4cca-b7d9-1ae2f619840e
+		summarizeBy: none
+		sourceColumn: IS_ACTIVE
+
+		annotation SummarizationSetBy = Automatic
+
+	column CREATED_AT
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: 915708f6-5831-4823-b81e-719f89403299
+		summarizeBy: none
+		sourceColumn: CREATED_AT
+
+		variation Variation
+			isDefault
+			relationship: a27f31be-83f5-4c94-a11f-4e06ae507347
+			defaultHierarchy: LocalDateTable_88a0a76e-cb83-40af-ac72-dfb823871beb.'Date Hierarchy'
+
+		annotation SummarizationSetBy = Automatic
+
+	column UPDATED_AT
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: 579cd1c7-630a-42ba-a220-60080cafe139
+		summarizeBy: none
+		sourceColumn: UPDATED_AT
+
+		variation Variation
+			isDefault
+			relationship: 7090b49d-3388-4d39-b627-440caef8580a
+			defaultHierarchy: LocalDateTable_b2dfbfad-d10a-4d82-a960-12874f444f25.'Date Hierarchy'
+
+		annotation SummarizationSetBy = Automatic
+
+	partition DRIVERSDIM = m
+		mode: import
+		source =
+				let
+				    Source = Snowflake.Databases("qzhsbsr-yu29773","FASTFEAST_WH",[Implementation="2.0"]),
+				    FASTFEAST_Database = Source{[Name="FASTFEAST",Kind="Database"]}[Data],
+				    FASTFEASTDWH_DUMMY_Schema = FASTFEAST_Database{[Name="FASTFEASTDWH_DUMMY",Kind="Schema"]}[Data],
+				    DRIVERSDIM_Table = FASTFEASTDWH_DUMMY_Schema{[Name="DRIVERSDIM",Kind="Table"]}[Data],
+				    #"Removed Duplicates" = Table.Distinct(DRIVERSDIM_Table),
+				    #"Changed Type" = Table.TransformColumnTypes(#"Removed Duplicates",{{"DRIVER_ID", type text}, {"DRIVER_PHONE", type text}, {"NATIONAL_ID", type text}, {"RATING_AVG", type text}, {"ON_TIME_RATE", type text}, {"CANCEL_RATE", type text}}),
+				    #"Filtered Rows" = Table.SelectRows(#"Changed Type", each ([DRIVER_ID] <> "76"))
+				in
+				    #"Filtered Rows"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

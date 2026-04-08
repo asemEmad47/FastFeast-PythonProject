@@ -1,0 +1,50 @@
+table ParameterForRespondMeasures
+	lineageTag: 25c63e65-ba4b-4a67-94b6-649f837740f8
+
+	column ParameterForRespondMeasures
+		lineageTag: b49fffb3-fdb8-47ab-af28-cc0e9da90245
+		summarizeBy: none
+		sourceColumn: [Value1]
+		sortByColumn: 'ParameterForRespondMeasures Order'
+
+		relatedColumnDetails
+			groupByColumn: 'ParameterForRespondMeasures Fields'
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'ParameterForRespondMeasures Fields'
+		isHidden
+		lineageTag: 4ef1b938-2bb4-4f7c-aaf4-4ff59b4bec03
+		summarizeBy: none
+		sourceColumn: [Value2]
+		sortByColumn: 'ParameterForRespondMeasures Order'
+
+		extendedProperty ParameterMetadata =
+				{
+				  "version": 3,
+				  "kind": 2
+				}
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'ParameterForRespondMeasures Order'
+		isHidden
+		formatString: 0
+		lineageTag: 920400e1-19c3-4c81-95e7-444991725d1e
+		summarizeBy: sum
+		sourceColumn: [Value3]
+
+		annotation SummarizationSetBy = Automatic
+
+	partition ParameterForRespondMeasures = calculated
+		mode: import
+		source =
+				{
+				    ("Avg Resolution Time", NAMEOF('Measures_Table'[Avg Resolution Time]), 0),
+				    ("First Response Time", NAMEOF('Measures_Table'[First Response Time]), 1),
+				    ("Reopen Rate %", NAMEOF('Measures_Table'[Net_Profit]), 2),
+				    ("SLA Breach Rate %", NAMEOF('Measures_Table'[SLA Breach Rate %]), 3)
+				}
+
+	annotation PBI_Id = 3c44548f0525443c93f0c5c056e72441
+

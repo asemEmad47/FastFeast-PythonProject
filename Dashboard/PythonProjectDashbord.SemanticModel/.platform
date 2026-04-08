@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "SemanticModel",
+    "displayName": "PythonProjectDashbord"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "eff6333d-6a61-4602-b215-fe1c683ffac6"
+  }
+}

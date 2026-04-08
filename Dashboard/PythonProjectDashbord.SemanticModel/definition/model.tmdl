@@ -1,0 +1,43 @@
+model Model
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: en-US
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+annotation __PBI_TimeIntelligenceEnabled = 1
+
+annotation PBI_QueryOrder = ["AGENTSDIM","CHANNELSDIM","CITIESDIM","CUSTOMERSDIM","DATEDIM","DRIVERSDIM","FACTTICKETS","REASONSDIM","REGIONSDIM","RESTAURANTSDIM","Measures_Table"]
+
+annotation PBI_ProTooling = ["DevMode"]
+
+ref table AGENTSDIM
+ref table DateTableTemplate_d5229b3e-d946-4de1-a7b4-d526b41152c5
+ref table LocalDateTable_9eea0c50-5b07-4b42-be93-b07e1ac19e1e
+ref table LocalDateTable_92e64a71-11f1-4cb5-aa4b-54203a1e028e
+ref table LocalDateTable_f499525f-9aa9-4d7a-8954-e2d7b23a9113
+ref table CHANNELSDIM
+ref table CITIESDIM
+ref table CUSTOMERSDIM
+ref table LocalDateTable_de224c9b-d497-492d-b62d-acd5761c783d
+ref table LocalDateTable_8c2072d0-7d3e-4af2-8037-876d5fc59ad5
+ref table LocalDateTable_8d22ecb2-7bc7-419d-a1f5-f2993abcecc2
+ref table DATEDIM
+ref table LocalDateTable_bc1c0fd3-8a21-42af-b7f9-01dc2e8a038d
+ref table DRIVERSDIM
+ref table LocalDateTable_91e59f20-1eed-47f2-b5ba-03525c078824
+ref table LocalDateTable_88a0a76e-cb83-40af-ac72-dfb823871beb
+ref table LocalDateTable_b2dfbfad-d10a-4d82-a960-12874f444f25
+ref table FACTTICKETS
+ref table REASONSDIM
+ref table REGIONSDIM
+ref table RESTAURANTSDIM
+ref table LocalDateTable_78e2b851-59c7-4026-9989-8244c6040df2
+ref table LocalDateTable_1b10bc62-c0cd-4415-9d7e-b2557b0af61d
+ref table Measures_Table
+ref table ParameterForTichetMeasures
+ref table ParameterForRespondMeasures
+
+ref cultureInfo en-US
+

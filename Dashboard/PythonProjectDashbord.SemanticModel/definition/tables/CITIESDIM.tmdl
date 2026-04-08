@@ -1,0 +1,52 @@
+table CITIESDIM
+	lineageTag: 207aacca-3f37-4268-92bc-99fe7530509e
+
+	column CITY_ID
+		dataType: double
+		lineageTag: d2badcb8-8073-45fd-8f0a-c0c68cda3f29
+		summarizeBy: none
+		sourceColumn: CITY_ID
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column CITY_NAME
+		dataType: string
+		lineageTag: ca34b51f-2d43-48f9-b93d-33b45094345d
+		summarizeBy: none
+		sourceColumn: CITY_NAME
+
+		annotation SummarizationSetBy = Automatic
+
+	column COUNTRY
+		dataType: string
+		lineageTag: 9c097bbf-fb1d-429d-ab37-8ba3216ca17a
+		summarizeBy: none
+		sourceColumn: COUNTRY
+
+		annotation SummarizationSetBy = Automatic
+
+	column TIMEZONE
+		dataType: string
+		lineageTag: 766387a1-b69e-40fb-b6dd-436c4a497197
+		summarizeBy: none
+		sourceColumn: TIMEZONE
+
+		annotation SummarizationSetBy = Automatic
+
+	partition CITIESDIM = m
+		mode: import
+		source =
+				let
+				    Source = Snowflake.Databases("qzhsbsr-yu29773","FASTFEAST_WH",[Implementation="2.0"]),
+				    FASTFEAST_Database = Source{[Name="FASTFEAST",Kind="Database"]}[Data],
+				    FASTFEASTDWH_DUMMY_Schema = FASTFEAST_Database{[Name="FASTFEASTDWH_DUMMY",Kind="Schema"]}[Data],
+				    CITIESDIM_Table = FASTFEASTDWH_DUMMY_Schema{[Name="CITIESDIM",Kind="Table"]}[Data]
+				in
+				    CITIESDIM_Table
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

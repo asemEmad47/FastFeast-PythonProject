@@ -1,0 +1,103 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.7.0/schema.json",
+  "name": "cfdc64049c58e38d048b",
+  "position": {
+    "x": 1094.4444444444443,
+    "y": 444.44444444444446,
+    "z": 3000,
+    "height": 243.33333333333331,
+    "width": 175.55555555555554,
+    "tabOrder": 3000
+  },
+  "visual": {
+    "visualType": "listSlicer",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "REASONSDIM"
+                    }
+                  },
+                  "Property": "REASON_CATEGORY_NAME"
+                }
+              },
+              "queryRef": "REASONSDIM.REASON_CATEGORY_NAME",
+              "nativeQueryRef": "REASON_CATEGORY_NAME",
+              "active": true
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "REASONSDIM"
+                    }
+                  },
+                  "Property": "REASON_NAME"
+                }
+              },
+              "queryRef": "REASONSDIM.REASON_NAME",
+              "nativeQueryRef": "REASON_NAME",
+              "active": false
+            }
+          ]
+        }
+      }
+    },
+    "expansionStates": [
+      {
+        "roles": [
+          "Values"
+        ],
+        "levels": [
+          {
+            "queryRefs": [
+              "REASONSDIM.REASON_CATEGORY_NAME"
+            ],
+            "isCollapsed": true,
+            "identityKeys": [
+              {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "REASONSDIM"
+                    }
+                  },
+                  "Property": "REASON_CATEGORY_NAME"
+                }
+              }
+            ],
+            "isPinned": true
+          },
+          {
+            "queryRefs": [
+              "REASONSDIM.REASON_NAME"
+            ],
+            "isCollapsed": true,
+            "isPinned": true
+          }
+        ],
+        "root": {}
+      }
+    ],
+    "objects": {
+      "general": [
+        {
+          "properties": {}
+        }
+      ]
+    },
+    "syncGroup": {
+      "groupName": "REASON_CATEGORY_NAME",
+      "fieldChanges": true,
+      "filterChanges": true
+    },
+    "drillFilterOtherVisuals": true
+  },
+  "isHidden": true
+}

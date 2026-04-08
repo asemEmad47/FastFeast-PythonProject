@@ -1,0 +1,107 @@
+table RESTAURANTSDIM
+	lineageTag: acba8c22-8d94-436e-923d-0dd67d3a8999
+
+	column RESTAURANT_ID
+		dataType: string
+		lineageTag: 0bb19b5a-c35f-4acd-b303-1a8087797419
+		summarizeBy: none
+		sourceColumn: RESTAURANT_ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column CATEGORY_NAME
+		dataType: string
+		lineageTag: 5665b0ae-b67b-41ab-a885-e6e7445ebeb4
+		summarizeBy: none
+		sourceColumn: CATEGORY_NAME
+
+		annotation SummarizationSetBy = Automatic
+
+	column RESTAURANT_NAME
+		dataType: string
+		lineageTag: ccca31d2-2ef8-4e2b-8cde-9d4f958c960b
+		summarizeBy: none
+		sourceColumn: RESTAURANT_NAME
+
+		annotation SummarizationSetBy = Automatic
+
+	column PRICE_TIER
+		dataType: string
+		lineageTag: ce2d6e7b-9545-4282-ab9e-075dd168823b
+		summarizeBy: none
+		sourceColumn: PRICE_TIER
+
+		annotation SummarizationSetBy = Automatic
+
+	column RATING_AVG
+		dataType: string
+		lineageTag: 91140d9e-7a1e-4dbc-8cf1-e2c35678e419
+		summarizeBy: none
+		sourceColumn: RATING_AVG
+
+		annotation SummarizationSetBy = Automatic
+
+	column PREP_TIME_AVG_MIN
+		dataType: double
+		lineageTag: c60a7157-ee32-486a-9cc5-1dc19be0fb8a
+		summarizeBy: sum
+		sourceColumn: PREP_TIME_AVG_MIN
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column IS_ACTIVE
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		lineageTag: 5248eddb-6fbb-4778-986f-b903ebbc5d8f
+		summarizeBy: none
+		sourceColumn: IS_ACTIVE
+
+		annotation SummarizationSetBy = Automatic
+
+	column CREATED_AT
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: 5989ab7d-1276-4673-8198-2258834ed11c
+		summarizeBy: none
+		sourceColumn: CREATED_AT
+
+		variation Variation
+			isDefault
+			relationship: bc6e2309-ce7a-46dd-acf6-c452070853aa
+			defaultHierarchy: LocalDateTable_78e2b851-59c7-4026-9989-8244c6040df2.'Date Hierarchy'
+
+		annotation SummarizationSetBy = Automatic
+
+	column UPDATED_AT
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: 184fb8a8-c2d3-4ce3-8716-fb9082c5f92f
+		summarizeBy: none
+		sourceColumn: UPDATED_AT
+
+		variation Variation
+			isDefault
+			relationship: c5cb4c1a-c8b3-4eda-9c90-e556a83c78d7
+			defaultHierarchy: LocalDateTable_1b10bc62-c0cd-4415-9d7e-b2557b0af61d.'Date Hierarchy'
+
+		annotation SummarizationSetBy = Automatic
+
+	partition RESTAURANTSDIM = m
+		mode: import
+		source =
+				let
+				    Source = Snowflake.Databases("qzhsbsr-yu29773","FASTFEAST_WH",[Implementation="2.0"]),
+				    FASTFEAST_Database = Source{[Name="FASTFEAST",Kind="Database"]}[Data],
+				    FASTFEASTDWH_DUMMY_Schema = FASTFEAST_Database{[Name="FASTFEASTDWH_DUMMY",Kind="Schema"]}[Data],
+				    RESTAURANTSDIM_Table = FASTFEASTDWH_DUMMY_Schema{[Name="RESTAURANTSDIM",Kind="Table"]}[Data],
+				    #"Removed Duplicates" = Table.Distinct(RESTAURANTSDIM_Table),
+				    #"Changed Type" = Table.TransformColumnTypes(#"Removed Duplicates",{{"RATING_AVG", type text}, {"RESTAURANT_ID", type text}})
+				in
+				    #"Changed Type"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

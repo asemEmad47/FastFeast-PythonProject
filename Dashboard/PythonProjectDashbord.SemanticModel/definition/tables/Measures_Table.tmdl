@@ -1,0 +1,69 @@
+table Measures_Table
+	lineageTag: 7bf209b4-4521-4f15-a009-b37154eaa766
+
+	measure 'Total Tickets' = COUNT('FactTickets'[ticket_id])
+		formatString: 0
+		lineageTag: bf878a37-d368-4e60-ba1e-10b27d1de383
+
+	measure 'SLA Breach Rate %' =
+			
+			DIVIDE(
+			    CALCULATE(COUNTROWS('FactTickets'), 'FactTickets'[sla_resolution_breached] = TRUE()),
+			    COUNTROWS('FactTickets')
+			)
+		lineageTag: 161666c1-2829-424b-921b-089bf8593477
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Avg Resolution Time' =
+			
+			AVERAGE('FactTickets'[resolution_time_min])
+		lineageTag: b593d333-5f10-483a-83e8-7b64a502a2ab
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'First Response Time' =
+			
+			AVERAGE('FactTickets'[first_response_time_min])
+		lineageTag: 8f8dee32-ca32-46c7-a5cf-47679874a1ef
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure Net_Profit = [Total Sales]-[Total Revenue Impact]
+		lineageTag: b89fe292-27ba-4f6c-aada-6e1e23605b5b
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Total Refund Amount' =
+			
+			SUM('FactTickets'[refund_amount])
+		lineageTag: 2836d5f9-4916-48c3-b656-a7cf4030538c
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Total Sales' =
+			
+			SUM('FACTTICKETS'[TOTAL_AMOUNT])
+		lineageTag: e2b00fea-4585-42d0-9a9e-39b207fb2ae5
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Total Revenue Impact' =
+			
+			SUM('FactTickets'[revenue_impact])
+		lineageTag: f8d28e38-7f86-46eb-b684-e403e8a4439f
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition Measures_Table = m
+		mode: import
+		source =
+				let
+				    Source = Table.FromRows(Json.Document(Binary.Decompress(Binary.FromText("i44FAA==", BinaryEncoding.Base64), Compression.Deflate)), let _t = ((type nullable text) meta [Serialized.Text = true]) in type table [Column1 = _t]),
+				    #"Changed Type" = Table.TransformColumnTypes(Source,{{"Column1", type text}}),
+				    #"Removed Columns" = Table.RemoveColumns(#"Changed Type",{"Column1"})
+				in
+				    #"Removed Columns"
+
+	annotation PBI_ResultType = Table
+

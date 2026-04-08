@@ -1,0 +1,150 @@
+table AGENTSDIM
+	lineageTag: 1b171cfd-39d1-448c-92f3-8f2c29aabd7d
+
+	column AGENT_ID
+		dataType: string
+		lineageTag: d24d107c-d56e-4021-ac89-396e4ed8dbbe
+		summarizeBy: none
+		sourceColumn: AGENT_ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column AGENT_NAME
+		dataType: string
+		lineageTag: 20ce7019-5e18-409a-86a9-22d44d9d9631
+		summarizeBy: none
+		sourceColumn: AGENT_NAME
+
+		annotation SummarizationSetBy = Automatic
+
+	column AGENT_EMAIL
+		dataType: string
+		lineageTag: 130be3a4-0dd3-462b-8d9c-0f2c015551f8
+		summarizeBy: none
+		sourceColumn: AGENT_EMAIL
+
+		annotation SummarizationSetBy = Automatic
+
+	column AGENT_PHONE
+		dataType: string
+		lineageTag: 8a39fa99-b12e-47d9-94a3-7cf826b0730a
+		summarizeBy: none
+		sourceColumn: AGENT_PHONE
+
+		annotation SummarizationSetBy = Automatic
+
+	column SKILL_LEVEL
+		dataType: string
+		lineageTag: 221c814d-62c0-4754-98fb-e4d28fb12d65
+		summarizeBy: none
+		sourceColumn: SKILL_LEVEL
+
+		annotation SummarizationSetBy = Automatic
+
+	column HIRE_DATE
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: e75d05ed-1c7b-4a6f-8742-20ca52fd3ad9
+		summarizeBy: none
+		sourceColumn: HIRE_DATE
+
+		variation Variation
+			isDefault
+			relationship: 62506129-6cf2-4465-b5a6-f84b334d2d0b
+			defaultHierarchy: LocalDateTable_9eea0c50-5b07-4b42-be93-b07e1ac19e1e.'Date Hierarchy'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column TEAM_NAME
+		dataType: string
+		lineageTag: a4b48ec9-6419-4692-b5a1-1c8a7a260f46
+		summarizeBy: none
+		sourceColumn: TEAM_NAME
+
+		annotation SummarizationSetBy = Automatic
+
+	column AVG_HANDLE_TIME_MIN
+		dataType: double
+		lineageTag: 9567112c-6eb9-4c12-8c49-9b460a4d2363
+		summarizeBy: sum
+		sourceColumn: AVG_HANDLE_TIME_MIN
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column RESOLUTION_RATE
+		dataType: double
+		lineageTag: e2d54c29-4402-46c4-8bac-5ce9b60b8a5f
+		summarizeBy: sum
+		sourceColumn: RESOLUTION_RATE
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column CSAT_SCORE
+		dataType: double
+		lineageTag: 5193b8a1-02df-4b2e-8d8f-5d4802f6e58e
+		summarizeBy: sum
+		sourceColumn: CSAT_SCORE
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column IS_ACTIVE
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		lineageTag: 84bf7ae7-0d5b-4ee0-a7de-6e46033a4704
+		summarizeBy: none
+		sourceColumn: IS_ACTIVE
+
+		annotation SummarizationSetBy = Automatic
+
+	column CREATED_AT
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: ce2c65f9-1505-48ba-bd33-98e5a8073aca
+		summarizeBy: none
+		sourceColumn: CREATED_AT
+
+		variation Variation
+			isDefault
+			relationship: 4115e5ad-92fe-47a4-bf64-ec80ca10b34b
+			defaultHierarchy: LocalDateTable_92e64a71-11f1-4cb5-aa4b-54203a1e028e.'Date Hierarchy'
+
+		annotation SummarizationSetBy = Automatic
+
+	column UPDATED_AT
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: 0a85d78d-cee1-4172-8234-6a3786c0ff75
+		summarizeBy: none
+		sourceColumn: UPDATED_AT
+
+		variation Variation
+			isDefault
+			relationship: 1ce232aa-0af2-4dc5-b994-23e0b505dcd4
+			defaultHierarchy: LocalDateTable_f499525f-9aa9-4d7a-8954-e2d7b23a9113.'Date Hierarchy'
+
+		annotation SummarizationSetBy = Automatic
+
+	partition AGENTSDIM = m
+		mode: import
+		source =
+				let
+				    Source = Snowflake.Databases("qzhsbsr-yu29773","FASTFEAST_WH",[Implementation="2.0"]),
+				    FASTFEAST_Database = Source{[Name="FASTFEAST",Kind="Database"]}[Data],
+				    FASTFEASTDWH_Schema = FASTFEAST_Database{[Name="FASTFEASTDWH",Kind="Schema"]}[Data],
+				    AGENTSDIM_Table = FASTFEASTDWH_Schema{[Name="AGENTSDIM",Kind="Table"]}[Data],
+				    #"Changed Type" = Table.TransformColumnTypes(AGENTSDIM_Table,{{"AGENT_ID", type text}, {"AGENT_PHONE", type text}})
+				in
+				    #"Changed Type"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+
