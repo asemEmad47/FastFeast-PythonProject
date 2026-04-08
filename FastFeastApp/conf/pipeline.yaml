@@ -454,7 +454,7 @@ tables:
         right_keys: [order_id, ticket_id]
         type: left
     renamed_columns:
-      status: Status
+      new_status: Status
       date_key_ticket_created: DATE_KEY_CREATED
       date_key_first_response: DATE_KEY_FIRST_RESPONSE
       date_key_resolved: DATE_KEY_RESOLVED
@@ -490,7 +490,6 @@ tables:
     table_type: fact
     repository: FactTicketsRepository
     primary_key: ticket_id
-
     keep_columns:
       - ticket_id
       - order_id
@@ -515,6 +514,11 @@ tables:
       - total_amount
       - revenue_impact
       - Status
+
+    date_columns:
+      - DATE_KEY_CREATED
+      - DATE_KEY_FIRST_RESPONSE
+      - DATE_KEY_RESOLVED
 
     aggregated_columns:
       - component: Transformer
