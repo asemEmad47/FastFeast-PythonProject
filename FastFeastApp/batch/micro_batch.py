@@ -78,8 +78,8 @@ class MicroBatch(BatchReader):
             
             print(f"Orchestrating workflow for date: {date_dir}, hour: {hour_dir} for micro batch")
             self.work_flow.orchestrate(files, date_dir,hour_dir)
-            # self.file_tracker.mark_processed(path)
-            # self.file_tracker.move_files_to_archive(path, True)
+            self.file_tracker.mark_processed(path)
+            self.file_tracker.move_files_to_archive(path, True)
             print(f"Finished processing {path}")
         except Exception as e:
             print(f"Error processing {path}: {e}")
