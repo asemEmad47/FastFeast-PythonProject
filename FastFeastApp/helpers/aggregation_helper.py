@@ -1,11 +1,11 @@
 from __future__ import annotations
 import pandas as pd
 
-
 class AggregationHelper:
 
     @staticmethod
     def apply(df: pd.DataFrame, aggregated_columns: list[dict]) -> tuple[bool, list[str], pd.DataFrame]:
+
         errors = []
 
         for action in aggregated_columns:
@@ -42,16 +42,19 @@ class AggregationHelper:
         end = params["end"]
         unit = params.get("unit", "m")
 
-        diff = pd.to_datetime(df[end]) - pd.to_datetime(df[start])
+        start_ts = pd.to_datetime(df[start], errors='coerce')
+        end_ts = pd.to_datetime(df[end], errors='coerce')
+        
+        diff = end_ts - start_ts
 
         if unit == "m":
-            df[name] = (diff.dt.total_seconds() / 60).astype(int)
+            df[name] = (diff.dt.total_seconds() / 60).round().fillna(0).astype(int)
         elif unit == "s":
-            df[name] = diff.dt.total_seconds().astype(int)
+            df[name] = diff.dt.total_seconds().round().fillna(0).astype(int)
         elif unit == "h":
-            df[name] = (diff.dt.total_seconds() / 3600).astype(int)
+            df[name] = (diff.dt.total_seconds() / 3600).round().fillna(0).astype(int)
         elif unit == "d":
-            df[name] = diff.dt.days
+            df[name] = diff.dt.days.fillna(0).astype(int)
 
         return df
 
@@ -99,7 +102,7 @@ class AggregationHelper:
             factor = step.get("factor", 1)
             right_column = step.get("right_column")
 
-            left_value = df[column] * factor
+            left_value = pd.to_numeric(df[column], errors='coerce').fillna(0) * factor
 
             if result is None:
                 result = left_value
@@ -110,11 +113,17 @@ class AggregationHelper:
             elif op == "-":
                 result = result - left_value
             elif op == "*":
-                right_value = df[right_column] * factor if right_column else left_value
-                result = result * right_value
+                if right_column:
+                    right_val = pd.to_numeric(df[right_column], errors='coerce').fillna(0) * factor
+                else:
+                    right_val = left_value
+                result = result * right_val
             elif op == "/":
-                right_value = df[right_column] * factor if right_column else left_value
-                result = result / right_value.replace(0, float("nan"))  # avoid division by zero
+                if right_column:
+                    right_val = pd.to_numeric(df[right_column], errors='coerce').fillna(0) * factor
+                else:
+                    right_val = left_value
+                result = result / right_val.replace(0, float("nan"))
 
         df[name] = result
         return df
