@@ -2,93 +2,89 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Optional
 import pandas as pd
+import json
 from etl.components.data_flow_component import DataFlowComponent
-from registry.data_registry import DataRegistry
-from audit.audit import Audit
 
 
 class OrphansHandler(DataFlowComponent):
-    def __init__(self, audit: Audit, registry: DataRegistry = None):
-        super().__init__(audit=audit, registry=registry)
-
     def do_task(self, data_frame_dict: dict) -> tuple[bool, list[str], dict, dict, Optional[pd.DataFrame]]:
-        orphan_table = self.registry.get_orphan_table_name()
-        if not orphan_table:
-            return False, ["OrphansHandler: orphan table name not found in registry"], data_frame_dict, {}, None
 
-        repository = self.registry.get_repository(orphan_table)
-        if repository is None:
-            return False, [f"OrphansHandler: no repository found for '{orphan_table}'"], data_frame_dict, {}, None
+        orphan_repo = self.registry.get_repository("OrphanRecords")
+        if orphan_repo is None:
+            return False, ["OrphansHandler: no repository found for 'OrphanRecords'"], data_frame_dict, {}, None
 
-        orphan_records = repository.get_all()
-        if orphan_records is None:
-            return False, ["OrphansHandler: failed to retrieve orphan records from repository"], data_frame_dict, {}, None
+        all_orphans = orphan_repo.get_all()
 
-        if not orphan_records:
+        if not all_orphans:
             return True, [], data_frame_dict, {}, None
 
+        grouped: dict[str, dict[str, list[dict]]] = defaultdict(lambda: defaultdict(list))
+
+        for orphan in all_orphans:
+            fact_table = orphan.get("fact_table")
+            payload = orphan.get("record_payload")
+            if isinstance(payload, str):
+                payload = json.loads(payload)
+
+            pk_col = self.registry.get_target_primary_key(fact_table)
+            ticket_id = payload.get(pk_col)
+
+            grouped[fact_table][ticket_id].append({
+                "quarantine_id": orphan.get("quarantine_id"),
+                "source_table": orphan.get("source_table"),
+                "orphaned_fk_column": orphan.get("orphaned_fk_column"),
+                "orphaned_fk_value": str(orphan.get("orphaned_fk_value")),
+                "record_payload": payload,
+            })
+
         errors = []
-        orphans_by_table = defaultdict(list)
 
-        for orphan in orphan_records:
-            source_table = orphan.get("source_table")
-            if source_table:
-                orphans_by_table[source_table].append(orphan)
-            else:
-                errors.append(f"OrphansHandler: missing source_table in record — {orphan}")
+        for fact_table, tickets in grouped.items():
+            fact_repo = self.registry.get_repository(fact_table)
+            fully_resolved_payloads: list[dict] = []
+            fully_resolved_quarantine_ids: list = []
 
-        for source_table, records in orphans_by_table.items():
-            dim_repository = self.registry.get_repository(source_table)
-            if dim_repository is None:
-                errors.append(f"OrphansHandler: no repository found for '{source_table}'")
+            if fact_repo is None:
+                errors.append(f"OrphansHandler: no repository found for fact_table='{fact_table}'")
                 continue
 
-            fact_name = records[0].get("fact_table")
-            fact_repository = self.registry.get_repository(fact_name)
-            if fact_repository is None:
-                errors.append(f"OrphansHandler: no repository found for fact table '{fact_name}'")
-                continue
+            for ticket_id, rows in tickets.items():
+                cleared_ids: list = []
+                unresolved_ct: int = 0
 
-            fk_values = {r.get("orphaned_fk_value") for r in records if r.get("orphaned_fk_value")}
-            existing_ids = dim_repository.get_existing_ids(fk_values)
-            still_orphan = fk_values - existing_ids
+                for row in rows:
+                    dim_table = row["source_table"]
+                    fk_value = row["orphaned_fk_value"]
+                    q_id = row["quarantine_id"]
 
-            resolved_fact_rows = []
-            resolved_quarantine_ids = set()
+                    dim_repo = self.registry.get_repository(dim_table)
+                    if dim_repo is None:
+                        unresolved_ct += 1
+                        continue
 
-            for orphan in records:
-                quarantine_id = orphan.get("quarantine_id")
-                fk_value = orphan.get("orphaned_fk_value")
-                fk_column = orphan.get("orphaned_fk_column")
-                fact_record = orphan.get("record_payload")
+                    exists = dim_repo.get_existing_ids({fk_value})
 
-                if not all([quarantine_id, fk_value, fk_column, fact_record]):
-                    errors.append(f"OrphansHandler: incomplete orphan record — {orphan}")
-                    continue
+                    if exists:
+                        cleared_ids.append(q_id)
+                    else:
+                        unresolved_ct += 1
 
-                if fk_value in still_orphan:
-                    errors.append(
-                        f"OrphansHandler: fk '{fk_column}={fk_value}' "
-                        f"still missing in '{source_table}' — kept in quarantine"
+                if unresolved_ct == 0:
+                    for r in rows:
+                        fully_resolved_payloads.append(r["record_payload"])
+                    fully_resolved_quarantine_ids.extend(cleared_ids)
+                else:
+                    if cleared_ids:
+                        orphan_repo.delete_many(cleared_ids)
+
+            if fully_resolved_payloads:
+                if fact_repo.add_many(fully_resolved_payloads):
+                    orphan_repo.delete_many(fully_resolved_quarantine_ids)
+                else:
+                    msg = (
+                        f"Failed to insert {len(fully_resolved_payloads)} resolved record(s) "
+                        f"into '{fact_table}'. Quarantine rows NOT deleted."
                     )
-                    continue
-
-                resolved_fact_rows.append(fact_record)
-                resolved_quarantine_ids.add(quarantine_id)
-
-            if not resolved_fact_rows:
-                continue
-
-            if fact_repository.add_many(resolved_fact_rows):
-                if not repository.delete_many(resolved_quarantine_ids):
-                    errors.append(
-                        f"OrphansHandler: inserted {len(resolved_fact_rows)} resolved records into '{fact_name}' "
-                        f"but failed to delete them from quarantine"
-                    )
-            else:
-                errors.append(
-                    f"OrphansHandler: failed to insert resolved records into '{fact_name}' "
-                    f"— kept in quarantine"
-                )
+                    errors.append(msg)
 
         return True, errors, data_frame_dict, {}, None
