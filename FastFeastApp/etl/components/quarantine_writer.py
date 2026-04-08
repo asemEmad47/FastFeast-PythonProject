@@ -33,34 +33,36 @@ class QuarantineWriter(DataFlowComponent):
         if repository is None:
             return ["QuarantineWriter: no repository found for OrphanRecords"]
 
-        fact_table = data_frame_dict.get("target")
+        fact_table = data_frame_dict.get("target") or data_frame_dict.get("dimension")
         if not fact_table:
             return ["QuarantineWriter: missing target in data_frame_dict"]
 
         records = []
         for _, row in orphan_df.iterrows():
-            dim_name = row.get("orphan_dim")
-            fk_col = row.get("orphan_fk")
-            fk_value = row.get(fk_col) if fk_col else None
+            dims = str(row.get("orphan_dim", "")).split("|")
+            fks = str(row.get("orphan_fk", "")).split("|")
 
-            payload = row.drop(
-                labels=["orphan_dim", "orphan_fk"],
-                errors="ignore"
-            ).to_dict()
-      
-            records.append({
-                "record_payload": json.loads(json.dumps(payload, default=str)), 
-                "fact_table": fact_table,
-                "source_table": dim_name,
-                "orphaned_fk_column": fk_col,
-                "orphaned_fk_value": fk_value,
-                "quarantined_at": pd.Timestamp.now(tz="UTC").strftime("%Y-%m-%d %H:%M:%S"),     
+            payload_dict = row.drop(labels=["orphan_dim", "orphan_fk"], errors="ignore").to_dict()
+            json_payload = json.loads(json.dumps(payload_dict, default=str))
+
+            for dim_name, fk_col in zip(dims, fks):
+                if not dim_name or not fk_col:
+                    continue
+
+                records.append({
+                    "record_payload": json_payload,
+                    "fact_table": fact_table,
+                    "source_table": dim_name,
+                    "orphaned_fk_column": fk_col,
+                    "orphaned_fk_value": str(row.get(fk_col)),
+                    "quarantined_at": pd.Timestamp.now(tz="UTC").strftime("%Y-%m-%d %H:%M:%S"),
                 })
 
-        if not repository.add_many(records):
-            errors.append("QuarantineWriter: failed to write orphan records to OrphanRecords")
+        if records and not repository.add_many(records):
+            errors.append("QuarantineWriter: failed to write orphan records")
 
         return errors
+    
     def _quarantine_non_orphan(self, duplicate_df: pd.DataFrame, data_frame_dict: dict) -> list[str]:
         errors = []
         repository = self.registry.get_repository("RejectedRecords")
