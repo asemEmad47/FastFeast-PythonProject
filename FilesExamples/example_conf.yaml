@@ -1,0 +1,7 @@
+batch:
+  batch_interval: "20"
+  batch_path: "../../data/input/batch"
+  micro_batch_path: "../../data/input/stream"
+  archive_dir_path: "../../data/archive"
+  archive_dir_stream: "stream"
+  archive_dir_batch: "batch"

@@ -1,0 +1,598 @@
+# ============================================================
+# FILES (RAW INGESTION LAYER)
+# ============================================================
+
+files:
+  agents:
+    file_name: agents.csv
+    file_type: dynamic
+    model_class: Agent
+    required_fields:
+      - agent_id
+      - agent_name
+      - agent_email
+      - agent_phone
+      - hire_date
+    pii_fields:
+      - agent_email
+      - agent_phone
+
+  teams:
+    file_name: teams.csv
+    file_type: static
+    model_class: Team
+    required_fields:
+      - team_id
+      - team_name
+
+  customers:
+    file_name: customers.csv
+    file_type: dynamic
+    model_class: Customer
+    required_fields:
+      - customer_id
+      - full_name
+      - email
+      - phone
+    pii_fields:
+      - email
+      - phone
+
+  segments:
+    file_name: segments.csv
+    file_type: static
+    model_class: Segment
+    required_fields:
+      - segment_id
+      - segment_name
+      - priority_support
+      - discount_pct
+
+  cities:
+    file_name: cities.json
+    file_type: static
+    model_class: City
+    required_fields:
+      - city_id
+      - city_name
+      - country
+      - timezone
+
+  regions:
+    file_name: regions.csv
+    file_type: static
+    model_class: Region
+    required_fields:
+      - region_id
+      - region_name
+      - city_id
+      - delivery_base_fee
+
+  restaurants:
+    file_name: restaurants.json
+    file_type: dynamic
+    model_class: Restaurant
+    required_fields:
+      - restaurant_id
+      - restaurant_name
+      - is_active
+
+  categories:
+    file_name: categories.csv
+    file_type: static
+    model_class: Category
+    required_fields:
+      - category_id
+      - category_name
+
+  channels:
+    file_name: channels.csv
+    file_type: static
+    model_class: Channel
+    required_fields:
+      - channel_id
+      - channel_name
+
+  drivers:
+    file_name: drivers.csv
+    file_type: dynamic
+    model_class: Driver
+    required_fields:
+      - driver_id
+      - driver_name
+      - driver_phone
+      - hire_date
+      - is_active
+    pii_fields:
+      - national_id
+      - driver_phone
+
+  priorities:
+    file_name: priorities.csv
+    file_type: static
+    model_class: Priority
+    required_fields:
+      - priority_id
+      - priority_code
+      - priority_name
+      - sla_first_response_min
+      - sla_resolution_min
+
+  reasons:
+    file_name: reasons.csv
+    file_type: static
+    model_class: Reason
+    required_fields:
+      - reason_id
+      - reason_name
+      - reason_category_id
+      - severity_level
+      - typical_refund_pct
+
+  reason_categories:
+    file_name: reason_categories.csv
+    file_type: static
+    model_class: ReasonCategory
+    required_fields:
+      - reason_category_id
+      - category_name
+
+  orders:
+    file_name: orders.json
+    file_type: dynamic
+    model_class: Order
+    required_fields:
+      - order_id
+      - customer_id
+      - restaurant_id
+      - driver_id
+      - order_amount
+      - delivery_fee
+      - discount_amount
+      - total_amount
+      - order_status
+      - payment_method
+      - delivered_at
+
+  tickets:
+    file_name: tickets.csv
+    file_type: dynamic
+    model_class: Ticket
+    required_fields:
+      - ticket_id
+      - order_id
+      - customer_id
+      - driver_id
+      - restaurant_id
+      - agent_id
+      - reason_id
+      - priority_id
+      - channel_id
+      - status
+      - refund_amount
+      - created_at
+      - first_response_at
+      - resolved_at
+      - sla_first_due_at
+      - sla_resolve_due_at
+
+  ticket_events:
+    file_name: ticket_events.json
+    file_type: dynamic
+    model_class: TicketEvent
+    required_fields:
+      - event_id
+      - ticket_id
+      - new_status
+
+# ============================================================
+# TABLES (DWH LAYER)
+# ============================================================
+
+tables:
+  AgentsDim:
+    source: [agents, teams]
+    joins:
+      - left: agents
+        right: [teams]
+        left_keys: [team_id]
+        right_keys: [team_id]
+        type: left
+    schema: FASTFEASTDWH
+    target_table: AgentsDim
+    table_type: dynamic_dimension
+    repository: AgentRepository
+
+    required_fields:
+      - agent_id
+      - agent_name
+      - agent_email
+      - agent_phone
+
+    primary_key: agent_id
+    keep_columns:
+      - agent_id
+      - agent_name
+      - agent_email
+      - agent_phone
+      - team_name
+      - skill_level
+      - hire_date
+      - avg_handle_time_min
+      - resolution_rate
+      - csat_score
+      - is_active
+      - created_at
+      - updated_at
+
+    date_columns:
+      - created_at
+      - updated_at
+
+  CustomersDim:
+    source: [customers, segments]
+    joins:
+      - left: customers
+        right: [segments]
+        left_keys: [segment_id]
+        right_keys: [segment_id]
+        type: left
+    schema: FASTFEASTDWH
+    target_table: CustomersDim
+    table_type: dynamic_dimension
+    repository: CustomerRepository
+    primary_key: customer_id
+    keep_columns:
+      - customer_id
+      - full_name
+      - email
+      - phone
+      - segment_name
+      - signup_date
+      - gender
+      - priority_support
+      - discount_pct
+      - created_at
+      - updated_at
+
+    date_columns:
+      - created_at
+      - updated_at
+      - signup_date
+
+    required_fields:
+      - customer_id
+      - full_name
+      - email
+      - phone
+
+  RegionsDim:
+    source: [regions]
+    schema: FASTFEASTDWH
+    target_table: RegionsDim
+    table_type: static_dimension
+    repository: RegionRepository
+    primary_key: region_id
+    foreign_keys:
+      city_id:
+        dim_table: CitiesDim
+        pk_column: city_id
+    keep_columns:
+      - region_id
+      - region_name
+      - city_id
+      - delivery_base_fee
+    required_fields:
+      - region_id
+      - region_name
+      - delivery_base_fee
+
+  RestaurantsDim:
+    source: [restaurants, categories]
+    schema: FASTFEASTDWH
+    target_table: RestaurantsDim
+    joins:
+      - left: restaurants
+        right: [categories]
+        left_keys: [category_id]
+        right_keys: [category_id]
+        type: left
+    table_type: dynamic_dimension
+    repository: RestaurantRepository
+
+    primary_key: restaurant_id
+
+    required_fields:
+      - restaurant_id
+      - restaurant_name
+      - prep_time_avg_min
+      - is_active
+
+    keep_columns:
+      - restaurant_id
+      - restaurant_name
+      - category_name
+      - price_tier
+      - rating_avg
+      - prep_time_avg_min
+      - is_active
+      - created_at
+      - updated_at
+
+    date_columns:
+      - created_at
+      - updated_at
+
+  ChannelsDim:
+    source: [channels]
+    schema: FASTFEASTDWH
+    target_table: ChannelsDim
+    table_type: static_dimension
+    repository: ChannelRepository
+
+    primary_key: channel_id
+
+    required_fields:
+      - channel_id
+      - channel_name
+
+    keep_columns:
+      - channel_id
+      - channel_name
+
+  CitiesDim:
+    source: [cities]
+    schema: FASTFEASTDWH
+    target_table: CitiesDim
+    table_type: static_dimension
+    repository: CitiesRepository
+    primary_key: city_id
+
+    required_fields:
+      - city_id
+      - city_name
+      - country
+      - timezone
+
+    keep_columns:
+      - city_id
+      - city_name
+      - country
+      - timezone
+
+  DateDim:
+    generated: true
+    schema: FASTFEASTDWH
+    target_table: DateDim
+    table_type: dynamic_dimension
+    repository: DateRepository
+
+    primary_key: date_id
+
+    keep_columns:
+      - date_id
+      - full_date
+      - day
+      - month
+      - quarter
+      - year
+      - day_of_week
+      - is_weekend
+
+  DriversDim:
+    source: [drivers]
+
+    schema: FASTFEASTDWH
+    target_table: DriversDim
+    table_type: dynamic_dimension
+    repository: DriversRepository
+
+    primary_key: driver_id
+
+    required_fields:
+      - driver_id
+      - driver_name
+      - driver_phone
+      - hire_date
+      - is_active
+
+    keep_columns:
+      - driver_id
+      - driver_name
+      - driver_phone
+      - national_id
+      - shift
+      - vehicle_type
+      - hire_date
+      - rating_avg
+      - on_time_rate
+      - cancel_rate
+      - completed_deliveries
+      - is_active
+      - created_at
+      - updated_at
+
+    date_columns:
+      - created_at
+      - updated_at
+
+  ReasonsDim:
+    source: [reasons, reason_categories]
+    joins:
+      - left: reasons
+        right: [reason_categories]
+        left_keys: [reason_category_id]
+        right_keys: [reason_category_id]
+        type: left
+
+    schema: FASTFEASTDWH
+    target_table: ReasonsDim
+    table_type: static_dimension
+    repository: ReasonRepository
+
+    primary_key: reason_id
+
+    required_fields:
+      - reason_id
+      - reason_name
+      - severity_level
+      - typical_refund_pct
+
+    keep_columns:
+      - reason_id
+      - reason_name
+      - category_name
+      - severity_level
+      - typical_refund_pct
+
+  FactTickets:
+    source: [tickets, orders, ticket_events]
+    joins:
+      - left: tickets
+        right: [orders, ticket_events]
+        left_keys: [order_id, ticket_id]
+        right_keys: [order_id, ticket_id]
+        type: left
+    renamed_columns:
+      new_status: Status
+      date_key_ticket_created: DATE_KEY_CREATED
+      date_key_first_response: DATE_KEY_FIRST_RESPONSE
+      date_key_resolved: DATE_KEY_RESOLVED
+    dimension_sources:
+      - dim: CustomersDim
+        fk: customer_id
+        type: left
+      - dim: AgentsDim
+        fk: agent_id
+        type: left
+      - dim: DriversDim
+        fk: driver_id
+        type: left
+      - dim: RestaurantsDim
+        fk: restaurant_id
+        type: left
+      - dim: RegionsDim
+        fk: region_id
+        type: left
+      - dim: ReasonsDim
+        fk: reason_id
+        type: left
+      - dim: ChannelsDim
+        fk: channel_id
+        type: left
+      - dim: DateDim
+        fk:
+          [date_key_ticket_created, date_key_first_response, date_key_resolved]
+        type: left
+
+    schema: FASTFEASTDWH
+    target_table: FactTickets
+    table_type: fact
+    repository: FactTicketsRepository
+    primary_key: ticket_id
+    keep_columns:
+      - ticket_id
+      - order_id
+      - customer_id
+      - agent_id
+      - driver_id
+      - restaurant_id
+      - region_id
+      - reason_id
+      - channel_id
+      - refund_amount
+      - DATE_KEY_CREATED
+      - DATE_KEY_FIRST_RESPONSE
+      - resolution_time_min
+      - first_response_time_min
+      - sla_first_response_breached
+      - sla_resolution_breached
+      - DATE_KEY_RESOLVED
+      - order_amount
+      - delivery_fee
+      - discount_amount
+      - total_amount
+      - revenue_impact
+      - Status
+
+    date_columns:
+      - DATE_KEY_CREATED
+      - DATE_KEY_FIRST_RESPONSE
+      - DATE_KEY_RESOLVED
+
+    aggregated_columns:
+      - component: Transformer
+        actions:
+          - name: resolution_time_min
+            type: date_diff
+            params: { end: "resolved_at", start: "created_at", unit: "m" }
+
+          - name: first_response_time_min
+            type: date_diff
+            params: { end: "first_response_at", start: "created_at", unit: "m" }
+
+          - name: sla_first_response_breached
+            type: comparison
+            params:
+              left: "first_response_at"
+              op: ">"
+              right: "sla_first_due_at"
+
+          - name: sla_resolution_breached
+            type: comparison
+            params:
+              left: "resolved_at"
+              op: ">"
+              right: "sla_resolve_due_at"
+
+          - name: revenue_impact
+            type: arithmetic
+            params:
+              - { column: "refund_amount", op: "+", factor: 1 }
+              - { column: "discount_amount", op: "+", factor: 1 }
+
+          - name: date_key_ticket_created
+            type: date_to_key
+            params: { column: "created_at" }
+
+          - name: date_key_first_response
+            type: date_to_key
+            params: { column: "first_response_at" }
+
+          - name: date_key_resolved
+            type: date_to_key
+            params: { column: "resolved_at" }
+  # ============================================================
+  # TABLES (Quarantine Zone)
+  # ============================================================
+  RejectedRecords:
+    schema: Quarantine
+    target_table: RejectedRecords
+    table_type: quarantine_zone
+    repository: RejectedRecordsRepository
+
+    primary_key: rejected_id
+
+    required_fields:
+      - rejected_id
+      - record_payload
+      - rejected_reason
+      - batch_source
+      - rejected_at
+
+  OrphanRecords:
+    schema: Quarantine
+    target_table: OrphanRecords
+    table_type: quarantine_zone
+    repository: OrphanRecordsRepository
+
+    primary_key: quarantine_id
+
+    required_fields:
+      - quarantine_id
+      - record_payload
+      - source_table
+      - fact_table
+      - orphaned_fk_column
+      - orphaned_fk_value
+      - quarantined_at

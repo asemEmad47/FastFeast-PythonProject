@@ -1,8 +1,10 @@
-# FastFeast Data Pipeline
+# Automated ETL Pipeline Builder
 
-> **Near Real-Time Micro-Batch ETL Pipeline** · OLTP → OLAP · Python · Modular Architecture
+> **Config-Driven · Near Real-Time · OLTP → OLAP · Python · Modular Architecture**
 
-A production-grade data engineering solution built for **FastFeast** — a rapidly growing food delivery platform operating across multiple cities. The pipeline ingests mixed-format source files, validates data quality, masks PII, enforces referential integrity, and loads a clean dimensional model into a data warehouse — with full fault tolerance, idempotency, and observability.
+An automated ETL tool that builds and runs your entire data pipeline from a single pipeline config file — no boilerplate, no manual wiring. Define your schema, adjust the config (or let any AI tool generate it for you), and your pipeline is up and running in minutes.
+
+**FastFeast** is the example application powering this repo — a rapidly growing food delivery platform used here to demonstrate the full capabilities of the framework across real-world batch and micro-batch data flows.
 
 ![Overview](Images/Overview%20Image.png)
 
@@ -23,6 +25,7 @@ A production-grade data engineering solution built for **FastFeast** — a rapid
 - [Alerting](#-alerting)
 - [Configuration](#-configuration)
 - [Project Structure](#-project-structure)
+- [Getting Started](#-getting-started)
 - [How to Run](#-how-to-run)
 
 ---
@@ -724,6 +727,98 @@ fastfeast-pipeline/
     ├── test_repositories.py
     └── test_pipeline.py
 ```
+
+---
+
+## Getting Started
+
+This is an **automated ETL pipeline builder** — define your schema in a pipeline config file and the pipeline is constructed and executed for you in minutes. No boilerplate, no manual wiring.
+
+---
+
+### Step 1 — Set Up a Virtual Environment (Windows)
+
+It is strongly recommended to run the project inside a virtual environment to isolate dependencies.
+
+```bash
+# 1. Create the virtual environment
+python -m venv venv
+
+# 2. Activate it
+venv\Scripts\activate
+
+# 3. Confirm it is active — your terminal prompt should show (venv)
+```
+
+> To deactivate the environment at any time, simply run `deactivate`.
+
+---
+
+### Step 2 — Install Dependencies
+
+With the virtual environment active, install all required packages:
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+### Step 3 — Configure Your Credentials & Pipeline
+
+The project ships with example files inside the **`FilesExamples/`** directory. These files are **git-ignored** from the main project and serve as templates you copy and fill in.
+
+```
+FilesExamples/
+├── .env.example          ← credentials template
+└── conf.example/         ← pipeline & data configuration templates
+    ├── batch.yaml
+    └── micro_batch.yaml
+```
+
+#### 3a — Set Up Your `.env`
+
+Copy the example env file to the project root and fill in your own credentials:
+
+```bash
+copy FilesExamples\.env.example .env
+```
+
+Then open `.env` and replace the placeholder values with your actual credentials:
+
+```env
+# Database
+FF_DATABASE_URL=postgresql://YOUR_USER:YOUR_PASSWORD@YOUR_HOST/YOUR_DB
+
+# Email Alerts
+ALERT_SMTP_HOST=smtp.gmail.com
+ALERT_SMTP_PORT=587
+ALERT_FROM_EMAIL=your_alert_sender@gmail.com
+ALERT_TO_EMAIL=your_inbox@gmail.com
+ALERT_EMAIL_PASSWORD=your_app_password
+
+# Snowflake
+SNOWFLAKE_ACCOUNT=your_account
+SNOWFLAKE_USER=your_user
+SNOWFLAKE_PASSWORD=your_password
+SNOWFLAKE_DATABASE=YOUR_DATABASE
+SNOWFLAKE_SCHEMA=YOUR_SCHEMA
+SNOWFLAKE_WAREHOUSE=YOUR_WAREHOUSE
+SNOWFLAKE_ROLE=YOUR_ROLE
+```
+
+#### 3b — Set Up Your Pipeline Config
+
+Copy the example conf files into the `conf/` directory:
+
+```bash
+# Copy the entire example conf folder into the conf directory
+xcopy FilesExamples\conf.example conf /E /I
+```
+
+Then open the copied files in `conf/` and adjust them to match your batch and micro-batch data sources, paths, and pipeline definitions.
+
+> 💡 **Pro tip — AI-powered pipeline generation:** The pipeline is built entirely from the config files in `conf/`. You can describe your schema to any AI tool (ChatGPT, Claude, etc.), paste in the example config structure, and ask it to generate the pipeline config for your tables. Your full ETL pipeline will be up and running in minutes — no code changes needed.
 
 ---
 
