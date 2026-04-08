@@ -1,0 +1,109 @@
+relationship 62506129-6cf2-4465-b5a6-f84b334d2d0b
+	joinOnDateBehavior: datePartOnly
+	fromColumn: AGENTSDIM.HIRE_DATE
+	toColumn: LocalDateTable_9eea0c50-5b07-4b42-be93-b07e1ac19e1e.Date
+
+relationship 4115e5ad-92fe-47a4-bf64-ec80ca10b34b
+	joinOnDateBehavior: datePartOnly
+	fromColumn: AGENTSDIM.CREATED_AT
+	toColumn: LocalDateTable_92e64a71-11f1-4cb5-aa4b-54203a1e028e.Date
+
+relationship 1ce232aa-0af2-4dc5-b994-23e0b505dcd4
+	joinOnDateBehavior: datePartOnly
+	fromColumn: AGENTSDIM.UPDATED_AT
+	toColumn: LocalDateTable_f499525f-9aa9-4d7a-8954-e2d7b23a9113.Date
+
+relationship 6da0f185-0461-4603-bee2-64171749dc0f
+	joinOnDateBehavior: datePartOnly
+	fromColumn: CUSTOMERSDIM.SIGNUP_DATE
+	toColumn: LocalDateTable_de224c9b-d497-492d-b62d-acd5761c783d.Date
+
+relationship b2cf6124-7d7b-427a-bdc2-57f98df0cadb
+	joinOnDateBehavior: datePartOnly
+	fromColumn: CUSTOMERSDIM.CREATED_AT
+	toColumn: LocalDateTable_8c2072d0-7d3e-4af2-8037-876d5fc59ad5.Date
+
+relationship 50947f77-f650-4c4a-b18c-1ef2efd4f692
+	joinOnDateBehavior: datePartOnly
+	fromColumn: CUSTOMERSDIM.UPDATED_AT
+	toColumn: LocalDateTable_8d22ecb2-7bc7-419d-a1f5-f2993abcecc2.Date
+
+relationship 437f1667-5f4f-4a15-81c7-e136a855e00e
+	joinOnDateBehavior: datePartOnly
+	fromColumn: DATEDIM.FULL_DATE
+	toColumn: LocalDateTable_bc1c0fd3-8a21-42af-b7f9-01dc2e8a038d.Date
+
+relationship b971b8e5-da92-4612-abeb-a61d49db7d40
+	joinOnDateBehavior: datePartOnly
+	fromColumn: DRIVERSDIM.HIRE_DATE
+	toColumn: LocalDateTable_91e59f20-1eed-47f2-b5ba-03525c078824.Date
+
+relationship a27f31be-83f5-4c94-a11f-4e06ae507347
+	joinOnDateBehavior: datePartOnly
+	fromColumn: DRIVERSDIM.CREATED_AT
+	toColumn: LocalDateTable_88a0a76e-cb83-40af-ac72-dfb823871beb.Date
+
+relationship 7090b49d-3388-4d39-b627-440caef8580a
+	joinOnDateBehavior: datePartOnly
+	fromColumn: DRIVERSDIM.UPDATED_AT
+	toColumn: LocalDateTable_b2dfbfad-d10a-4d82-a960-12874f444f25.Date
+
+relationship bc6e2309-ce7a-46dd-acf6-c452070853aa
+	joinOnDateBehavior: datePartOnly
+	fromColumn: RESTAURANTSDIM.CREATED_AT
+	toColumn: LocalDateTable_78e2b851-59c7-4026-9989-8244c6040df2.Date
+
+relationship c5cb4c1a-c8b3-4eda-9c90-e556a83c78d7
+	joinOnDateBehavior: datePartOnly
+	fromColumn: RESTAURANTSDIM.UPDATED_AT
+	toColumn: LocalDateTable_1b10bc62-c0cd-4415-9d7e-b2557b0af61d.Date
+
+relationship AutoDetected_1c58e04f-fcb9-4961-b116-c0591fe4965b
+	fromColumn: FACTTICKETS.AGENT_ID
+	toColumn: AGENTSDIM.AGENT_ID
+
+relationship AutoDetected_422d1571-2c39-4b4a-bf50-408b4fa8cdb6
+	fromColumn: FACTTICKETS.CHANNEL_ID
+	toColumn: CHANNELSDIM.CHANNEL_ID
+
+relationship AutoDetected_67e9bbd6-6f6e-4590-8462-b0abbd156319
+	fromColumn: REGIONSDIM.CITY_ID
+	toColumn: CITIESDIM.CITY_ID
+
+relationship d14c9a47-09cb-e42d-302f-2fc195db4378
+	crossFilteringBehavior: bothDirections
+	fromColumn: FACTTICKETS.REASON_ID
+	toColumn: REGIONSDIM.REGION_ID
+
+relationship 08f7b16c-d907-db80-9354-a1bf0004c08c
+	crossFilteringBehavior: bothDirections
+	fromColumn: FACTTICKETS.RESTAURANT_ID
+	toColumn: RESTAURANTSDIM.RESTAURANT_ID
+
+relationship b272914a-5f6a-3947-7b41-600b221b63de
+	crossFilteringBehavior: bothDirections
+	fromColumn: FACTTICKETS.REASON_ID
+	toColumn: REASONSDIM.REASON_ID
+
+relationship 6bcdb67a-91e3-ad9a-4acc-b3e8a62f0e8f
+	fromColumn: FACTTICKETS.CUSTOMER_ID
+	toColumn: CUSTOMERSDIM.CUSTOMER_ID
+
+relationship 8f0d6138-bd8f-3893-6580-f9a4fe449220
+	fromColumn: FACTTICKETS.DATE_KEY_CREATED
+	toColumn: DATEDIM.DATE_ID
+
+relationship 3c6099e8-5ecc-dd79-9a68-d145cbba44fe
+	isActive: false
+	fromColumn: FACTTICKETS.DATE_KEY_FIRST_RESPONSE
+	toColumn: DATEDIM.DATE_ID
+
+relationship 75f51f49-27bb-6ae2-007a-6d5926456104
+	isActive: false
+	fromColumn: FACTTICKETS.DATE_KEY_RESOLVED
+	toColumn: DATEDIM.DATE_ID
+
+relationship eb5dda85-d48b-70df-800a-626928281e1a
+	fromColumn: FACTTICKETS.DRIVER_ID
+	toColumn: DRIVERSDIM.DRIVER_ID
+

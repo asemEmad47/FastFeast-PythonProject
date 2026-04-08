@@ -1,0 +1,54 @@
+table REGIONSDIM
+	lineageTag: 9e9c06a1-a735-44ea-8a97-f382f6c05087
+
+	column REGION_ID
+		dataType: string
+		lineageTag: 3ce3df43-d942-4f84-a91e-7e110f102516
+		summarizeBy: none
+		sourceColumn: REGION_ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column REGION_NAME
+		dataType: string
+		lineageTag: 22e10760-45d2-4429-8dfa-4a2984a45c1e
+		summarizeBy: none
+		sourceColumn: REGION_NAME
+
+		annotation SummarizationSetBy = Automatic
+
+	column CITY_ID
+		dataType: string
+		lineageTag: 8aa8503b-f7f8-4292-8a43-7cd6ebe262e9
+		summarizeBy: none
+		sourceColumn: CITY_ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column DELIVERY_BASE_FEE
+		dataType: double
+		lineageTag: 78b4aef2-c0df-4880-8470-11af2b44aae5
+		summarizeBy: sum
+		sourceColumn: DELIVERY_BASE_FEE
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition REGIONSDIM = m
+		mode: import
+		source =
+				let
+				    Source = Snowflake.Databases("qzhsbsr-yu29773","FASTFEAST_WH",[Implementation="2.0"]),
+				    FASTFEAST_Database = Source{[Name="FASTFEAST",Kind="Database"]}[Data],
+				    FASTFEASTDWH_DUMMY_Schema = FASTFEAST_Database{[Name="FASTFEASTDWH_DUMMY",Kind="Schema"]}[Data],
+				    REGIONSDIM_Table = FASTFEASTDWH_DUMMY_Schema{[Name="REGIONSDIM",Kind="Table"]}[Data],
+				    #"Removed Duplicates" = Table.Distinct(REGIONSDIM_Table),
+				    #"Changed Type" = Table.TransformColumnTypes(#"Removed Duplicates",{{"CITY_ID", type text}, {"REGION_ID", type text}})
+				in
+				    #"Changed Type"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

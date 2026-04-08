@@ -1,0 +1,61 @@
+table REASONSDIM
+	lineageTag: ff25d734-82f6-4244-8bf8-652aa7c08601
+
+	column REASON_ID
+		dataType: string
+		lineageTag: 455629a4-492b-4337-aa94-53fe1ae12086
+		summarizeBy: none
+		sourceColumn: REASON_ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column REASON_NAME
+		dataType: string
+		lineageTag: caafce95-847c-43ca-b0d8-406e82e3476c
+		summarizeBy: none
+		sourceColumn: REASON_NAME
+
+		annotation SummarizationSetBy = Automatic
+
+	column REASON_CATEGORY_NAME
+		dataType: string
+		lineageTag: ea5a5c58-a144-426a-81e8-4c3f5483a602
+		summarizeBy: none
+		sourceColumn: REASON_CATEGORY_NAME
+
+		annotation SummarizationSetBy = Automatic
+
+	column SEVERITY_LEVEL
+		dataType: string
+		lineageTag: 55c54be5-de2b-4cff-91cb-763d354926c2
+		summarizeBy: none
+		sourceColumn: SEVERITY_LEVEL
+
+		annotation SummarizationSetBy = Automatic
+
+	column TYPICAL_REFUND_PCT
+		dataType: double
+		lineageTag: b2543ee9-5599-4961-aa88-02cb7742056d
+		summarizeBy: none
+		sourceColumn: TYPICAL_REFUND_PCT
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition REASONSDIM = m
+		mode: import
+		source =
+				let
+				    Source = Snowflake.Databases("qzhsbsr-yu29773","FASTFEAST_WH",[Implementation="2.0"]),
+				    FASTFEAST_Database = Source{[Name="FASTFEAST",Kind="Database"]}[Data],
+				    FASTFEASTDWH_DUMMY_Schema = FASTFEAST_Database{[Name="FASTFEASTDWH_DUMMY",Kind="Schema"]}[Data],
+				    REASONSDIM_Table = FASTFEASTDWH_DUMMY_Schema{[Name="REASONSDIM",Kind="Table"]}[Data],
+				    #"Changed Type" = Table.TransformColumnTypes(REASONSDIM_Table,{{"REASON_ID", type text}, {"SEVERITY_LEVEL", type text}})
+				in
+				    #"Changed Type"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

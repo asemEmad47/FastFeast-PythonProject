@@ -1,0 +1,131 @@
+table CUSTOMERSDIM
+	lineageTag: 56927438-d582-46cf-b267-1bf5b3d49c2a
+
+	column CUSTOMER_ID
+		dataType: string
+		lineageTag: 5e11ec9a-b9e8-450f-8da2-7fbb822380fe
+		summarizeBy: none
+		sourceColumn: CUSTOMER_ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column FULL_NAME
+		dataType: string
+		lineageTag: 56e677dc-2ba5-4fbc-967d-30d116c74fcb
+		summarizeBy: none
+		sourceColumn: FULL_NAME
+
+		annotation SummarizationSetBy = Automatic
+
+	column EMAIL
+		dataType: string
+		lineageTag: b69aec83-eb22-4bc2-ada3-2c7b50a9dc7b
+		summarizeBy: none
+		sourceColumn: EMAIL
+
+		annotation SummarizationSetBy = Automatic
+
+	column PHONE
+		dataType: string
+		lineageTag: 7a44a64a-9dd4-42e3-b7dd-44d512797f7b
+		summarizeBy: none
+		sourceColumn: PHONE
+
+		annotation SummarizationSetBy = Automatic
+
+	column SIGNUP_DATE
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: 1d33683f-882b-4fca-ac10-43dabaf65329
+		summarizeBy: none
+		sourceColumn: SIGNUP_DATE
+
+		variation Variation
+			isDefault
+			relationship: 6da0f185-0461-4603-bee2-64171749dc0f
+			defaultHierarchy: LocalDateTable_de224c9b-d497-492d-b62d-acd5761c783d.'Date Hierarchy'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column GENDER
+		dataType: string
+		lineageTag: d24e32b1-d7de-4086-b212-34dc1a70aba7
+		summarizeBy: none
+		sourceColumn: GENDER
+
+		annotation SummarizationSetBy = Automatic
+
+	column CREATED_AT
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: 6c50a5dd-8b3b-49dd-8c0a-78dc134cd46d
+		summarizeBy: none
+		sourceColumn: CREATED_AT
+
+		variation Variation
+			isDefault
+			relationship: b2cf6124-7d7b-427a-bdc2-57f98df0cadb
+			defaultHierarchy: LocalDateTable_8c2072d0-7d3e-4af2-8037-876d5fc59ad5.'Date Hierarchy'
+
+		annotation SummarizationSetBy = Automatic
+
+	column UPDATED_AT
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: c00e407d-a2e4-4b4a-b1e1-f10904c54f6e
+		summarizeBy: none
+		sourceColumn: UPDATED_AT
+
+		variation Variation
+			isDefault
+			relationship: 50947f77-f650-4c4a-b18c-1ef2efd4f692
+			defaultHierarchy: LocalDateTable_8d22ecb2-7bc7-419d-a1f5-f2993abcecc2.'Date Hierarchy'
+
+		annotation SummarizationSetBy = Automatic
+
+	column SEGMENT_NAME
+		dataType: string
+		lineageTag: 9447e2e9-325b-4b26-ba46-ee8c7be52338
+		summarizeBy: none
+		sourceColumn: SEGMENT_NAME
+
+		annotation SummarizationSetBy = Automatic
+
+	column PRIORITY_SUPPORT
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		lineageTag: 91700766-33a5-4454-8c90-f63a856c5c34
+		summarizeBy: none
+		sourceColumn: PRIORITY_SUPPORT
+
+		annotation SummarizationSetBy = Automatic
+
+	column DISCOUNT_PCT
+		dataType: double
+		lineageTag: 77f67fdb-c11d-4828-bc65-fe0b9a3d9940
+		summarizeBy: sum
+		sourceColumn: DISCOUNT_PCT
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition CUSTOMERSDIM = m
+		mode: import
+		source =
+				let
+				    Source = Snowflake.Databases("qzhsbsr-yu29773","FASTFEAST_WH",[Implementation="2.0"]),
+				    FASTFEAST_Database = Source{[Name="FASTFEAST",Kind="Database"]}[Data],
+				    FASTFEASTDWH_DUMMY_Schema = FASTFEAST_Database{[Name="FASTFEASTDWH_DUMMY",Kind="Schema"]}[Data],
+				    CUSTOMERSDIM_Table = FASTFEASTDWH_DUMMY_Schema{[Name="CUSTOMERSDIM",Kind="Table"]}[Data],
+				    #"Removed Duplicates" = Table.Distinct(CUSTOMERSDIM_Table),
+				    #"Changed Type" = Table.TransformColumnTypes(#"Removed Duplicates",{{"CUSTOMER_ID", type text}, {"PHONE", type text}})
+				in
+				    #"Changed Type"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

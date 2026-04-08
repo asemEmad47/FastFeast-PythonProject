@@ -1,0 +1,36 @@
+table CHANNELSDIM
+	lineageTag: 3bbcbce4-3eab-41cd-9f31-c69f5cb66d50
+
+	column CHANNEL_ID
+		dataType: double
+		lineageTag: d7d205ef-678c-4104-b5cc-4b8dba0dd658
+		summarizeBy: none
+		sourceColumn: CHANNEL_ID
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column CHANNEL_NAME
+		dataType: string
+		lineageTag: 2a1ead00-b2fc-4a86-b164-9db5fe6bfd4b
+		summarizeBy: none
+		sourceColumn: CHANNEL_NAME
+
+		annotation SummarizationSetBy = Automatic
+
+	partition CHANNELSDIM = m
+		mode: import
+		source =
+				let
+				    Source = Snowflake.Databases("qzhsbsr-yu29773","FASTFEAST_WH",[Implementation="2.0"]),
+				    FASTFEAST_Database = Source{[Name="FASTFEAST",Kind="Database"]}[Data],
+				    FASTFEASTDWH_DUMMY_Schema = FASTFEAST_Database{[Name="FASTFEASTDWH_DUMMY",Kind="Schema"]}[Data],
+				    CHANNELSDIM_Table = FASTFEASTDWH_DUMMY_Schema{[Name="CHANNELSDIM",Kind="Table"]}[Data]
+				in
+				    CHANNELSDIM_Table
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

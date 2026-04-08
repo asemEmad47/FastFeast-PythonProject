@@ -1,12 +1,14 @@
-# 🍔 FastFeast Data Pipeline
+# FastFeast Data Pipeline
 
 > **Near Real-Time Micro-Batch ETL Pipeline** · OLTP → OLAP · Python · Modular Architecture
 
 A production-grade data engineering solution built for **FastFeast** — a rapidly growing food delivery platform operating across multiple cities. The pipeline ingests mixed-format source files, validates data quality, masks PII, enforces referential integrity, and loads a clean dimensional model into a data warehouse — with full fault tolerance, idempotency, and observability.
 
+![Overview](Images/Overview%20Image.png)
+
 ---
 
-## 📑 Table of Contents
+## Table of Contents
 
 - [Business Context](#-business-context)
 - [High-Level Architecture](#-high-level-architecture)
@@ -25,7 +27,7 @@ A production-grade data engineering solution built for **FastFeast** — a rapid
 
 ---
 
-## 🏢 Business Context
+## Business Context
 
 FastFeast connects **Customers**, **Restaurants**, **Drivers**, and **Support Agents**. As the platform scaled across cities, operational analytics became critical for monitoring delivery SLAs, complaint rates, driver performance, and revenue impact.
 
@@ -39,55 +41,13 @@ FastFeast connects **Customers**, **Restaurants**, **Drivers**, and **Support Ag
 | PII leaking into analytics layer | `PIIMask` component hashes sensitive fields |
 | Pipeline halting on one bad file | Fault-tolerant flow — skip, log, alert, continue |
 | No pipeline observability | `Audit` writes quality metrics to DWH after every file |
-
 ---
 
-## 🏛️ High-Level Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                                main.py                                      │
-│                              AppManager                                     │
-│                                                                             │
-│   Shared Objects (created once, injected everywhere)                        │
-│   ┌──────────────┐ ┌─────────────┐ ┌─────────────┐ ┌───────────────────┐  │
-│   │DatabaseManager│ │DataRegistry │ │ConfFileParser│ │  FileTracker      │  │
-│   │  (Singleton) │ │  (Registry) │ │  (Facade)   │ │  (Idempotency)    │  │
-│   └──────────────┘ └─────────────┘ └─────────────┘ └───────────────────┘  │
-│                                                                             │
-│          Thread 1 — Batch                   Thread 2 — MicroBatch          │
-│         ┌─────────────┐                    ┌──────────────────┐            │
-│         │Batch.run()  │                    │MicroBatch        │            │
-│         │get_files()  │                    │poll_directory()  │            │
-│         └──────┬──────┘                    └────────┬─────────┘            │
-│                │                                    │                      │
-│                └──────────────┬─────────────────────┘                      │
-│                               │                                            │
-│                    ┌──────────▼──────────┐                                 │
-│                    │  WorkFlow.orchestrate│  ◄─── Facade Pattern           │
-│                    └──────────┬──────────┘                                 │
-│                               │                                            │
-│              ┌────────────────▼──────────────────────┐                     │
-│              │         Per-File Pipeline              │                     │
-│              │                                       │                     │
-│              │  1. FileTracker  → idempotency guard  │                     │
-│              │  2. ReadFromSourceFactory → CSV/JSON  │  ◄── Factory        │
-│              │  3. ValidatorComponent → schema+rows  │  ◄── Strategy       │
-│              │  4. PIIMask → hash PII fields         │                     │
-│              │  5. LookUp (dedup) → filter existing  │  ◄── Registry       │
-│              │  6. LookUp (orphan) → quarantine FKs  │  ◄── Repository     │
-│              │  7. Join → enrich (if config says so) │                     │
-│              │  8. DataFlowTask → LoadToTarget (dim) │  ◄── Composite      │
-│              │  9. FactLoadTask → LoadToTarget (fact)│                     │
-│              │ 10. Audit.persist_to_dwh()            │                     │
-│              │ 11. FileTracker.mark_processed()      │                     │
-│              └───────────────────────────────────────┘                     │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
+## High-Level Architecture
+![High Level Architecture](Images/High%20Level%20Architecture.png)
 ---
 
-## 🧱 Module Breakdown
+## Module Breakdown
 
 | Module | Classes | Responsibility |
 |---|---|---|
@@ -97,15 +57,15 @@ FastFeast connects **Customers**, **Restaurants**, **Drivers**, and **Support Ag
 | `AppManager` | `AppManager` | Startup, dependency injection, thread launch |
 | `RegistryModule` | `DataRegistry`, `ConfFileParser` | Central mapping hub, config parsing |
 | `DBLayer` | `DatabaseManager` | Singleton connection pool |
-| `RepositoryLayer` | `BaseRepository<T>` + 16 concrete repos | All DB access abstracted behind typed repos |
+| `RepositoryLayer` | `BaseRepository<T>` + 7 concrete repos | All DB access abstracted behind typed repos |
 | `AuditModule` | `Audit`, `QualityReport`, `PipelineRunLog` | Metrics accumulation, DWH persistence |
 | `Models` | `BaseModel` + 17 entity models | SQLAlchemy ORM entities |
 
 ---
 
-## 🧩 Design Patterns
+## Design Patterns
 
-### 1. 🏭 Factory — `ReadFromSourceFactory`
+### 1. Factory — `ReadFromSourceFactory`
 
 **Problem:** Files arrive in both CSV and JSON formats. The rest of the pipeline must not care about format.
 
@@ -123,7 +83,7 @@ Adding a new format (e.g., Parquet) requires one new class and one line in the f
 
 ---
 
-### 2. 🗂️ Repository — `BaseRepository<T>`
+### 2. Repository — `BaseRepository<T>`
 
 **Problem:** The pipeline needs to read from and write to many different tables. SQL must not be scattered across business logic.
 
@@ -143,11 +103,11 @@ BaseRepository<T>
 ```
 
 **Concrete repositories:**
-`CustomerRepository`, `OrderRepository`, `TicketRepository`, `TicketEventRepository`, `DriverRepository`, `RestaurantRepository`, `AgentRepository`, `RegionRepository`, `CityRepository`, `PriorityRepository`, `ChannelRepository`, `ReasonRepository`, `ReasonCategoryRepository`, `CategoryRepository`, `TeamRepository`, `SegmentRepository`
+`DimCustomerRepository`,`DimDriverRepository`, `DimRestaurantRepository`, `DimAgentRepository`, `FactRepository`, `OrphaneRepository`, `RejectedRepository`
 
 ---
 
-### 3. 🔒 Singleton — `DatabaseManager`
+### 3. Singleton — `DatabaseManager`
 
 **Problem:** The database connection pool must be created exactly once and shared across all threads and all repositories. Creating a new pool per file would exhaust DB connections immediately.
 
@@ -171,7 +131,7 @@ class DatabaseManager:
 
 ---
 
-### 4. 📋 Registry — `DataRegistry`
+### 4. Registry — `DataRegistry`
 
 **Problem:** `WorkFlow`, `ReadFromSource`, `LookUp`, and `LoadToTarget` all need to know: *"For this file, which repository do I use? Which ORM model? Which config section?"* This mapping must live in one place.
 
@@ -182,26 +142,10 @@ DataRegistry
   + get_repository_for_file(file_name): BaseRepository
   + get_model_for_file(file_name): BaseModel
   + get_table_conf(file_name): string
-  + warm_cache(table_name, repo): void       ← called at startup
-  + refresh_cache(table_name, repo): void    ← called each new batch day
-  + lookup_cached(table_name, ids: set): set ← zero DB calls
-  + get_existing_ids(table, id_col, ids): set ← one bulk query
 ```
-
-```python
-# Internal mapping example
-_registry = {
-    "customers.csv":    (CustomerRepository,   Customer,   "customers"),
-    "orders.json":      (OrderRepository,      Order,      "orders"),
-    "tickets.csv":      (TicketRepository,     Ticket,     "tickets"),
-    "priorities.csv":   (PriorityRepository,   Priority,   "priority"),
-    ...
-}
-```
-
 ---
 
-### 5. 🎭 Strategy — `ValidatorContext`
+### 5. Strategy — `ValidatorContext`
 
 **Problem:** The pipeline needs two fundamentally different validation modes — schema-level (reject whole file) and row-level (reject individual rows). These must be swappable without changing orchestration code.
 
@@ -232,15 +176,15 @@ ok, errors, clean_df = context.validate(df, model)
 
 ---
 
-### 6. 🔗 Composite Chain — `DataFlowTask` + `DataFlowComponent`
+### 6. Composite Chain — `DataFlowTask` + `DataFlowComponent`
 
 **Problem:** Each table's pipeline is a different ordered sequence of operations. Writing a bespoke function for each table is not maintainable.
 
-**Solution:** `DataFlowTask` holds an ordered `List<DataFlowComponent>` and calls `do_task()` on each in sequence. The task doesn't know what components do — it just chains them. Adding a step to any table's pipeline is one line of config.
+**Solution:** `DataFlowTask` holds a dictionary the key is the source name and the value is the list of components `Dict<DataFlowComponent>` and calls `do_task()` on each in sequence. The task doesn't know what components do — it just chains them. Adding a step to any table's pipeline is one line of config.
 
 ```
 DataFlowTask
-  - components: List<DataFlowComponent>
+  - components: Dict<DataFlowComponent>
   + do_task(): (bool, List<string>)
       │
       ├── ReadFromSource.do_task()      → raw DataFrame
@@ -263,7 +207,7 @@ FactLoadTask
 
 ---
 
-### 7. 🎨 Facade — `WorkFlow`
+### 7. Facade — `WorkFlow`
 
 **Problem:** `Batch` and `MicroBatch` should not need to know about validators, lookups, registries, audits, or alerting. They just process files.
 
@@ -286,7 +230,7 @@ WorkFlow
 ---
 
 
-## 🔁 Pipeline Flow (Updated)
+## Pipeline Flow
 
 The pipeline execution is organized into **four deterministic phases** orchestrated by the `WorkFlow` facade.
 Both **Batch** and **MicroBatch** threads send files to the same workflow engine.
@@ -325,10 +269,6 @@ Components executed:
 - PIIMask
 - QuarantineWriter
 
-Output DataFrames are cached:
-
-registry.store(table_name, df)
-
 ---
 
 ### Phase 2 — Join Phase
@@ -349,8 +289,6 @@ FOR each fact table:
             join_type
         )
 
-registry.store(output_alias, fact_df)
-
 ---
 
 ### Phase 3 — After Join Tasks
@@ -360,11 +298,10 @@ Components executed:
 - Transformer
 - OrphansHandler
 - DuplicatesLookUp
-- SCDComponent
+- OrphanesLookUp
 
 FOR task IN after_join_tasks:
     task.do_task()
-    registry.store(task.source, df)
 
 ---
 
@@ -392,11 +329,12 @@ audit.LogSuccess()
 Metrics stored:
 
 - total_records
+- passed_records
+- failed_records
 - duplicate_rate
 - orphan_rate
 - quarantined_count
-- processing_latency
-- file_success
+- null_rate
 
 ---
 
@@ -414,7 +352,7 @@ Errors never stop the pipeline.
 Error → Audit.LogFailure() → trigger_alert() → continue processing
 
 
-## 📥 Input Files & Data Model
+## Input Files & Data Model
 
 ### Source Files
 
@@ -429,53 +367,24 @@ Error → Audit.LogFailure() → trigger_alert() → continue processing
 | `cities.json` | JSON | `dim_city` |
 | `regions.csv` | CSV | `dim_region` |
 | `reasons.csv` | CSV | `dim_reason` |
-| `categories.csv` | CSV | `dim_category` |
-| `segments.csv` | CSV | `dim_segment` |
-| `teams.csv` | CSV | `dim_team` |
+| `categories.csv` | CSV | `dim_resturant` |
+| `segments.csv` | CSV | `dim_customer` |
+| `teams.csv` | CSV | `dim_agent` |
 | `channels.csv` | CSV | `dim_channel` |
-| `priorities.csv` | CSV | `dim_priority` |
-| `reason_categories.csv` | CSV | `dim_reason_category` |
+| `priorities.csv` | CSV | `Not Loaded` |
+| `reason_categories.csv` | CSV | `dim_reason` |
 
 **Micro-Batch — incremental, irregular intervals**
 
 | File | Format | Loads Into |
 |---|---|---|
-| `orders.json` | JSON | `fact_order` |
+| `orders.json` | JSON | `fact_ticket` |
 | `tickets.csv` | CSV | `fact_ticket` |
-| `ticket_events.json` | JSON | `fact_ticket_event` |
+| `ticket_events.json` | JSON | `fact_ticket` |
 
 ### OLAP Star Schema
 
-```
-                      ┌──────────────┐
-                      │  dim_date    │
-                      └──────┬───────┘
-                             │
- ┌──────────────┐     ┌──────▼────────────────┐     ┌────────────────┐
- │ dim_customer │────►│                       │◄────│  dim_agent     │
- ├──────────────┤     │      fact_ticket      │     ├────────────────┤
- │ dim_driver   │────►│                       │◄────│  dim_priority  │
- ├──────────────┤     │  SLA fields computed  │◄────│  dim_channel   │
- │ dim_region   │────►│  at load time:        │◄────│  dim_reason    │
- ├──────────────┤     │  • sla_breached       │     └────────────────┘
- │ dim_city     │     │  • response_time_min  │
- └──────────────┘     │  • resolution_time_min│
-                      └──────────┬────────────┘
-                                 │
-                      ┌──────────▼────────────┐
-                      │  fact_ticket_event    │
-                      │  (status transitions) │
-                      └───────────────────────┘
-
-                      ┌───────────────────────┐
-                      │      fact_order       │
- ┌──────────────┐     │                       │
- │ dim_customer │────►│  order_amount         │
- │ dim_driver   │────►│  delivery_fee         │
- │ dim_restaurant│───►│  total_amount         │
- │ dim_region   │────►│  discount_amount      │
- └──────────────┘     └───────────────────────┘
-```
+![dimensional model](Images/dimendsionalModel.drawio.png)
 
 ### SLA Fields Computed at Load Time
 
@@ -491,7 +400,7 @@ These fields are not in the source — they are calculated during `fact_ticket` 
 
 ---
 
-## ✅ Validation System
+## Validation System
 
 ### Schema Validation — file-level gate
 
@@ -518,8 +427,8 @@ Bad rows are quarantined; the clean DataFrame continues. Pipeline never stops.
 
 ### Quarantine
 
-Every rejected row is written to `data/quarantine/` with:
-- Source filename
+Every rejected row is written to `rejected table` with:
+- Batch Source
 - Rejection reason
 - Rejection timestamp
 - Original row data
@@ -534,7 +443,7 @@ Every rejected row is written to `data/quarantine/` with:
 
 **Tier 1 — In-Memory Cache** (small, stable, batch-only tables)
 
-Pre-loaded at startup via `DataRegistry.warm_cache()`. Refreshed at the start of each new batch day. Zero DB calls during the pipeline run for these tables.
+Refreshed at the start of each new batch day. Zero DB calls during the pipeline run for these tables.
 
 ```
 Cached at startup:
@@ -569,31 +478,59 @@ Bulk query tables:
 ### Per-Table Strategy Config
 
 ```yaml
+files:
+  agents:
+    file_name: agents.csv
+    file_type: dynamic
+    model_class: Agent
+    required_fields:
+      - agent_id
+      - agent_name
+      - agent_email
+      - agent_phone
+      - hire_date
+    pii_fields:
+      - agent_email
+      - agent_phone
+
 tables:
-  priority:
-    lookup_strategy: cache      # tiny, never changes intraday
-  customers:
-    lookup_strategy: bulk_query # grows throughout the day
-  orders:
-    lookup_strategy: bulk_query # high volume, micro-batch
+  RegionsDim:
+    source: [regions]
+    schema: FASTFEASTDWH
+    target_table: RegionsDim
+    table_type: static_dimension
+    repository: RegionRepository
+    primary_key: region_id
+    foreign_keys:
+      city_id: 
+        dim_table: CitiesDim
+        pk_column: city_id
+    keep_columns:
+      - region_id
+      - region_name
+      - city_id
+      - delivery_base_fee
+    required_fields:
+      - region_id
+      - region_name
+      - delivery_base_fee
 ```
 
 ---
 
 
-## 🔒 PII Handling
+## PII Handling
 
 No raw PII is ever stored in the analytics layer. `PIIMask` runs after row validation and before any data reaches the DWH. Masking uses **SHA-256** — values are deterministic (same input → same hash) so joins still work, but the original value is unrecoverable from the warehouse.
 
 | Entity | Masked Fields |
 |---|---|
-| Customer | `full_name`, `email`, `phone` |
-| Driver | `driver_name`, `driver_phone`, `national_id` |
-| Agent | `agent_name`, `agent_email`, `agent_phone` |
+| Customer | `email`, `phone` |
+| Agent | `agent_email`, `agent_phone` |
 
 ---
 
-## 📊 Metrics & Audit
+## Metrics & Audit
 
 `Audit` accumulates metrics per file and writes one row to `pipeline_run_log` in the DWH after every file completes — success or failure.
 
@@ -608,23 +545,6 @@ No raw PII is ever stored in the analytics layer. `PIIMask` runs after row valid
 | `quarantined_count` | Total rows rejected across all steps |
 | `processing_latency_ms` | Time from file arrival to load complete |
 | `file_success` | True if file loaded without critical error |
-
-### `pipeline_run_log` Table
-
-```sql
-CREATE TABLE pipeline_run_log (
-    run_id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    file_name             VARCHAR     NOT NULL,
-    run_timestamp         TIMESTAMP   NOT NULL DEFAULT now(),
-    total_records         INT,
-    null_rate             DECIMAL(5,4),
-    duplicate_rate        DECIMAL(5,4),
-    orphan_rate           DECIMAL(5,4),
-    quarantined_count     INT,
-    processing_latency_ms INT,
-    file_success          BOOLEAN     NOT NULL
-);
-```
 
 ### Business Analytics Views (DWH — not pipeline code)
 
@@ -658,7 +578,7 @@ ORDER BY ticket_count DESC;
 
 ---
 
-## 📬 Alerting
+## Alerting
 
 Alerts fire **asynchronously in a background thread** — they never block pipeline execution.
 
@@ -684,58 +604,33 @@ def _trigger_alert(self, message: str) -> None:
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
-All behavior is driven by `config/pipeline.yaml`. No values are hardcoded in the codebase.
+All behavior is driven by `config/settings.py`. No values are hardcoded in the codebase.
 
-```yaml
-pipeline:
-  batch_dir:         "data/input/batch"
-  stream_dir:        "data/input/stream"
-  quarantine_dir:    "data/quarantine"
-  log_dir:           "logs"
-  poll_interval_sec: 30
+```python
 
-database:
-  url:       "postgresql://user:pass@host:5432/fastfeast_dwh"
-  pool_size: 10
+DATABASE_URL = os.getenv("FF_DATABASE_URL", "postgresql://user:pass@localhost/fastfeast")
 
-alerting:
-  email_to:               "data-team@fastfeast.com"
-  email_from:             "pipeline@fastfeast.com"
-  smtp_host:              "smtp.fastfeast.com"
-  orphan_rate_threshold:  0.05   # alert if > 5% of rows are orphans
+ALERT_SMTP_HOST      = os.getenv("ALERT_SMTP_HOST",      "smtp.gmail.com")
+ALERT_SMTP_PORT      = int(os.getenv("ALERT_SMTP_PORT",  "587"))
+ALERT_FROM_EMAIL     = os.getenv("ALERT_FROM_EMAIL",     "asememad984@gmail.com")
+ALERT_TO_EMAIL       = os.getenv("ALERT_TO_EMAIL",       "asememad590@gmail.com")
+ALERT_EMAIL_PASSWORD = os.getenv("ALERT_EMAIL_PASSWORD", "tpfsajouaawlqmzw")
 
-tables:
-  customers:
-    target_table:    dim_customer
-    primary_key:     customer_id
-    lookup_strategy: bulk_query
-    pii_fields:      [full_name, email, phone]
-    foreign_keys:    []
-
-  tickets:
-    target_table:    fact_ticket
-    primary_key:     ticket_id
-    lookup_strategy: bulk_query
-    foreign_keys:
-      - column: order_id      references: fact_order
-      - column: customer_id   references: dim_customer
-      - column: agent_id      references: dim_agent
-    join:
-      - table:   dim_priority
-        on:      priority_id
-        columns: [sla_first_response_min, sla_resolution_min]
-
-  priority:
-    target_table:    dim_priority
-    primary_key:     priority_id
-    lookup_strategy: cache
+# Snow flake part
+SNOWFLAKE_ACCOUNT   = os.getenv("SNOWFLAKE_ACCOUNT")
+SNOWFLAKE_USER      = os.getenv("SNOWFLAKE_USER")
+SNOWFLAKE_PASSWORD  = os.getenv("SNOWFLAKE_PASSWORD")
+SNOWFLAKE_DATABASE  = os.getenv("SNOWFLAKE_DATABASE",  "FASTFEAST")
+SNOWFLAKE_SCHEMA    = os.getenv("SNOWFLAKE_SCHEMA",    "FASTFEASTDWH")
+SNOWFLAKE_WAREHOUSE = os.getenv("SNOWFLAKE_WAREHOUSE", "FASTFEAST_WH")
+SNOWFLAKE_ROLE      = os.getenv("SNOWFLAKE_ROLE",      "FASTFEAST_ADMIN")
 ```
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 fastfeast-pipeline/
@@ -789,21 +684,10 @@ fastfeast-pipeline/
 │   ├── repositories/
 │   │   ├── base_repository.py
 │   │   ├── customer_repository.py
-│   │   ├── order_repository.py
-│   │   ├── ticket_repository.py
-│   │   ├── ticket_event_repository.py
+│   │   ├── fact_repository.py
 │   │   ├── driver_repository.py
 │   │   ├── restaurant_repository.py
 │   │   ├── agent_repository.py
-│   │   ├── region_repository.py
-│   │   ├── city_repository.py
-│   │   ├── priority_repository.py
-│   │   ├── channel_repository.py
-│   │   ├── reason_repository.py
-│   │   ├── reason_category_repository.py
-│   │   ├── category_repository.py
-│   │   ├── team_repository.py
-│   │   └── segment_repository.py
 │   │
 │   ├── models/
 │   │   ├── base_model.py
@@ -843,7 +727,7 @@ fastfeast-pipeline/
 
 ---
 
-## 🚀 How to Run
+## How to Run
 
 ### Prerequisites
 
@@ -888,7 +772,7 @@ Both threads start automatically. **Batch** processes the daily files once. **Mi
 
 ---
 
-## 🛡️ Fault Tolerance Guarantee
+## Fault Tolerance Guarantee
 
 ```
 On ANY error at ANY step:
@@ -901,4 +785,4 @@ On ANY error at ANY step:
 
 ---
 
-*FastFeast Data Engineering — Project Deadline: 2026-04-02*
+*FastFeast Data Engineering .*

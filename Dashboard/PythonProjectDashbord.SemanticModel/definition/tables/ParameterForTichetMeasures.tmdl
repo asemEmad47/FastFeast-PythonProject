@@ -1,0 +1,51 @@
+table ParameterForTichetMeasures
+	lineageTag: 835515e4-3e14-4d06-b169-9bbabd099944
+
+	column ParameterForTichetMeasures
+		lineageTag: 9006f5bc-2879-440a-bdb2-e03140cee9e1
+		summarizeBy: none
+		sourceColumn: [Value1]
+		sortByColumn: 'ParameterForTichetMeasures Order'
+
+		relatedColumnDetails
+			groupByColumn: 'ParameterForTichetMeasures Fields'
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'ParameterForTichetMeasures Fields'
+		isHidden
+		lineageTag: f3eae232-50b1-4cae-abfc-198f1fd5177e
+		summarizeBy: none
+		sourceColumn: [Value2]
+		sortByColumn: 'ParameterForTichetMeasures Order'
+
+		extendedProperty ParameterMetadata =
+				{
+				  "version": 3,
+				  "kind": 2
+				}
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'ParameterForTichetMeasures Order'
+		isHidden
+		formatString: 0
+		lineageTag: f88d603d-5609-44a9-9e08-b5e7cdcdba4c
+		summarizeBy: sum
+		sourceColumn: [Value3]
+
+		annotation SummarizationSetBy = Automatic
+
+	partition ParameterForTichetMeasures = calculated
+		mode: import
+		source =
+				{
+				    ("Total Tickets", NAMEOF('Measures_Table'[Total Tickets]), 0),
+				    ("Total Revenue Impact", NAMEOF('Measures_Table'[Total Revenue Impact]), 1),
+				    ("Total Refund Amount", NAMEOF('Measures_Table'[Total Refund Amount]), 2),
+				    ("Total Amount", NAMEOF('Measures_Table'[Total Sales]), 3),
+				    ("Net_Profit",NAMEOF(Measures_Table[Net_Profit]),4)
+				}
+
+	annotation PBI_Id = 45b8c6e1bc7140ec9d44694ab86ca789
+
