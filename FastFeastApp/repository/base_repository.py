@@ -139,7 +139,21 @@ class BaseRepository(Generic[T]):
     def get_all(self) -> list[dict]:
         method = "get_all"
         try:
-            return self._db.execute(f"SELECT * FROM {self._full_table_name()}")
+            results = self._db.execute(f"SELECT * FROM {self._full_table_name()}")
+
+            if not results:
+                return []
+
+            schema, table = self._full_table_name().split(".")
+            col_results = self._db.execute(
+                f"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS "
+                f"WHERE TABLE_SCHEMA = '{schema}' AND TABLE_NAME = '{table}' "
+                f"ORDER BY ORDINAL_POSITION"
+            )
+            columns = [row[0].lower() for row in col_results]
+
+            return [dict(zip(columns, row)) for row in results]
+
         except Exception as e:
             log_error(_logger, self._audit,
                 f"{self._ctx(method)} Failed to fetch all records from {self._full_table_name()} | "
