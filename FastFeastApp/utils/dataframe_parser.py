@@ -21,7 +21,7 @@ import numpy as np
 class DataFrameParser:
 
     def __init__(self, df: pd.DataFrame) -> None:
-        self._df = df
+        self._df = df.copy()
 
     # ── Building Steps ─────────────────────────────────────────────────────
 
@@ -35,9 +35,46 @@ class DataFrameParser:
                 self._df[col] = self._df[col].dt.strftime("%Y-%m-%d %H:%M:%S")
             elif self._df[col].dtype == object:
                 try:
-                    self._df[col] = pd.to_datetime(self._df[col], format="mixed").dt.strftime("%Y-%m-%d %H:%M:%S")
+                    self._df[col] = pd.to_datetime(self._df[col], format="mixed", utc=False).dt.strftime("%Y-%m-%d %H:%M:%S")
                 except (ValueError, TypeError):
                     pass
+        return self
+    
+    def align_dtypes(self, reference_df: pd.DataFrame) -> DataFrameParser:
+        for col in self._df.columns:
+            if col not in reference_df.columns:
+                continue
+            ref_dtype = reference_df[col].dtype
+            self_dtype = self._df[col].dtype
+            try:
+                # If one is int and other is float, use float for both
+                if pd.api.types.is_integer_dtype(ref_dtype) and pd.api.types.is_float_dtype(self_dtype):
+                    self._df[col] = self._df[col].astype(ref_dtype)  # float → int only if no nulls
+                elif pd.api.types.is_float_dtype(ref_dtype) and pd.api.types.is_integer_dtype(self_dtype):
+                    pass  # leave db_df as float, caller should cast reference too
+                else:
+                    self._df[col] = self._df[col].astype(ref_dtype)
+            except (ValueError, TypeError) as e:
+                print(f"align_dtypes: could not cast '{col}' to {ref_dtype}: {e}")
+        return self
+    
+    def stringify_columns(self) -> DataFrameParser:
+        for col in self._df.columns:
+            if pd.api.types.is_float_dtype(self._df[col]):
+                non_null = self._df[col].dropna()
+                if len(non_null) > 0 and (non_null % 1 == 0).all():
+                    self._df[col] = self._df[col].apply(
+                        lambda x: str(int(x)) if pd.notna(x) else "None"
+                    )
+                    continue
+            if self._df[col].dtype == object:
+                try:
+                    parsed = pd.to_datetime(self._df[col], format="mixed", dayfirst=False)
+                    self._df[col] = parsed.dt.strftime("%Y-%m-%d")
+                    continue
+                except (ValueError, TypeError):
+                    pass
+            self._df[col] = self._df[col].astype(str).str.strip()
         return self
 
     def fill_nulls(self) -> DataFrameParser:

@@ -106,6 +106,7 @@ class DataFlowTask(Task):
             records = (
                 DataFrameParser(src["dataframe"])
                     .normalize_timestamps(date_columns=date_cols)
+                    .stringify_columns()
                     .fill_nulls()
                     .to_df()
             )
@@ -121,6 +122,7 @@ class DataFlowTask(Task):
         for i, data_dict in enumerate(dataframe_dicts):
             dimension = data_dict["dimension"]
             working = data_dict
+            self.audit.reset_stage()
 
             comps = self.after_join_components.get(dimension, [])
             if not comps:
@@ -136,11 +138,11 @@ class DataFlowTask(Task):
                 print(f"[After-Join] Running: {comp.__class__.__name__} for {dimension}")
 
                 ok, errors, working, metrics, bad_rows = comp.do_task(working)
-                
                 if bad_rows is not None and not bad_rows.empty:
                     bad_dict = {
                         "dataframe": bad_rows,
                         "dimension": data_dict.get("dimension"),
+                        "source": working.get("source") or working.get("target") or dimension,
                     }
                     self.quarantine_writer.set_errors(errors)
                     _, q_errors, _, _, _ = self.quarantine_writer.do_task(bad_dict)

@@ -40,28 +40,40 @@ class DuplicatesLookUp(LookUp):
             source_pii_cols = self.registry.get_pii_columns(source)
             if source_pii_cols:
                 pii_cols.extend(source_pii_cols)
-            
-            
-        
+              
         keep_cols = [col for col in df.columns if col not in pii_cols]
         
-        existing_rows = repository.get_columns_by_ids(keep_cols, existing_ids)
-        
-        db_df = pd.DataFrame(existing_rows, columns=keep_cols)
-        data_frame_parser = DataFrameParser(db_df)
         date_cols = self.registry.get_target_date_columns(dimension)
-        db_df = DataFrameParser(db_df).normalize_timestamps(date_columns=date_cols).to_df()
+        no_audit_cols = [col for col in df[keep_cols].columns if col not in date_cols and col ]
+        existing_rows = repository.get_columns_by_ids(no_audit_cols, existing_ids)
 
-        
-        print(df)
-        print(db_df)
-        
-        
-        merged = df[keep_cols].merge(db_df, on=keep_cols, how='left', indicator=True)
+        db_df = pd.DataFrame(existing_rows, columns=no_audit_cols)
+        existing_rows = repository.get_columns_by_ids(no_audit_cols, existing_ids)
+        db_df = pd.DataFrame(existing_rows, columns=no_audit_cols)
+
+        db_df = db_df.drop_duplicates()
+        db_df = (
+            DataFrameParser(db_df)
+                .normalize_timestamps(date_columns=date_cols)
+                .stringify_columns()
+                .to_df()
+            )
+
+        df = (
+            DataFrameParser(df[no_audit_cols])
+                .normalize_timestamps(date_columns=date_cols)
+                .stringify_columns()
+                .fill_nulls()
+                .to_df()
+        )
+
+        merged = df.merge(db_df, on=no_audit_cols, how='left', indicator=True)
+                
         
         duplicate_df = merged[merged['_merge'] == 'both'].drop(columns=['_merge'])
         
         clean_df = merged[merged['_merge'] == 'left_only'].drop(columns=['_merge'])
+
 
         metrics = {
             "total_records": len(df),
@@ -74,5 +86,5 @@ class DuplicatesLookUp(LookUp):
         for _, row in duplicate_df.iterrows():
             errors.append(f"Duplicate record found with {pk}={row[pk]} on dimension '{dimension}'")
 
-        data_frame_dict["df"] = clean_df
+        data_frame_dict["dataframe"] = clean_df
         return True, errors, data_frame_dict, metrics, duplicate_df 

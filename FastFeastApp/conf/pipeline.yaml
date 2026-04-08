@@ -103,6 +103,9 @@ files:
       - driver_phone
       - hire_date
       - is_active
+    pii_fields:
+      - national_id
+      - driver_phone
 
   priorities:
     file_name: priorities.csv
@@ -255,6 +258,7 @@ tables:
     date_columns:
       - created_at
       - updated_at
+      - signup_date
 
     required_fields:
       - customer_id
